@@ -1,0 +1,1 @@
+I need you to help me writting a promt to vs code co[ilot agent to help me hosting a webapp on render.com using supabase.com database services. i am using free accounts for render and supabase. the 

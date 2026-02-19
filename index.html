@@ -1,0 +1,2629 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Management System</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #f0f2f5; --bg-secondary: #ffffff; --bg-card: #ffffff; --bg-accent: #f8f9fc;
+            --text-primary: #1a1d23; --text-secondary: #6b7280; --text-muted: #9ca3af;
+            --border-color: #e5e7eb; --border-light: #f0f0f0;
+            --primary: #4f46e5; --primary-light: #818cf8; --primary-dark: #3730a3; --primary-bg: rgba(79,70,229,0.08);
+            --success: #10b981; --success-bg: rgba(16,185,129,0.08);
+            --warning: #f59e0b; --warning-bg: rgba(245,158,11,0.08);
+            --danger: #ef4444; --danger-bg: rgba(239,68,68,0.08);
+            --info: #3b82f6; --info-bg: rgba(59,130,246,0.08);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04); --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.08); --shadow-xl: 0 20px 50px rgba(0,0,0,0.1);
+            --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px;
+            --transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #0f1117; --bg-secondary: #1a1d27; --bg-card: #1e2130; --bg-accent: #252838;
+            --text-primary: #e5e7eb; --text-secondary: #9ca3af; --text-muted: #6b7280;
+            --border-color: #2d3044; --border-light: #252838;
+            --primary-bg: rgba(79,70,229,0.15); --success-bg: rgba(16,185,129,0.12);
+            --warning-bg: rgba(245,158,11,0.12); --danger-bg: rgba(239,68,68,0.12); --info-bg: rgba(59,130,246,0.12);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2); --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.4); --shadow-xl: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; line-height: 1.6; overflow-x: hidden; }
+
+        .app-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(79,70,229,0.3); }
+        .header-inner { max-width: 1400px; margin: 0 auto; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+        .header-brand { display: flex; align-items: center; gap: 14px; }
+        .header-logo { width: 42px; height: 42px; background: rgba(255,255,255,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 20px; backdrop-filter: blur(10px); }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        .header-subtitle { font-size: 12px; opacity: 0.8; font-weight: 400; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; transition: var(--transition); display: flex; align-items: center; gap: 6px; backdrop-filter: blur(10px); }
+        .header-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+
+        .stepper-container { background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 16px 32px; overflow-x: auto; }
+        .stepper { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0; }
+        .step { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 14px; border-radius: var(--radius-md); transition: var(--transition); }
+        .step:hover { background: var(--primary-bg); }
+        .step-number { width: 34px; height: 34px; border-radius: 50%; background: var(--bg-accent); border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: var(--text-muted); transition: var(--transition); flex-shrink: 0; }
+        .step.active .step-number { background: var(--primary); border-color: var(--primary); color: white; box-shadow: 0 0 0 4px var(--primary-bg); }
+        .step.completed .step-number { background: var(--success); border-color: var(--success); color: white; }
+        .step-label { font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+        .step.active .step-label { color: var(--primary); font-weight: 600; }
+        .step.completed .step-label { color: var(--success); }
+        .step-connector { width: 28px; height: 2px; background: var(--border-color); flex-shrink: 0; }
+        .step-connector.completed { background: var(--success); }
+
+        .main-content { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+        .page { display: none; animation: fadeSlideIn 0.4s ease; }
+        .page.active { display: block; }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 20px; box-shadow: var(--shadow-sm); transition: var(--transition); }
+        .card:hover { box-shadow: var(--shadow-md); }
+        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); }
+        .card-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .card-icon.primary { background: var(--primary-bg); color: var(--primary); }
+        .card-icon.success { background: var(--success-bg); color: var(--success); }
+        .card-icon.warning { background: var(--warning-bg); color: var(--warning); }
+        .card-icon.info { background: var(--info-bg); color: var(--info); }
+        .card-icon.danger { background: var(--danger-bg); color: var(--danger); }
+        .card-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+        .card-description { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+        .drop-zone { border: 2px dashed var(--border-color); border-radius: var(--radius-lg); padding: 48px 32px; text-align: center; cursor: pointer; transition: var(--transition); background: var(--bg-accent); }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-bg); transform: scale(1.01); }
+        .drop-zone-icon { font-size: 48px; color: var(--primary-light); margin-bottom: 16px; }
+        .drop-zone-text { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+        .drop-zone-hint { font-size: 13px; color: var(--text-muted); }
+        .file-info { display: none; padding: 20px; background: var(--success-bg); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-md); margin-top: 16px; }
+        .file-info.show { display: flex; align-items: center; gap: 14px; }
+        .file-info-icon { width: 44px; height: 44px; background: var(--success); color: white; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .file-info-text { flex: 1; }
+        .file-info-name { font-weight: 600; font-size: 14px; }
+        .file-info-meta { font-size: 12px; color: var(--text-secondary); }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+        .form-input, .form-select { width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--bg-secondary); color: var(--text-primary); transition: var(--transition); outline: none; }
+        .form-input:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); }
+        .form-input::placeholder { color: var(--text-muted); }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+        .form-inline { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+        .form-inline .form-group { margin-bottom: 0; }
+
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+        .btn:hover { transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 14px rgba(79,70,229,0.4); }
+        .btn-success { background: var(--success); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--warning); color: white; box-shadow: 0 2px 8px rgba(245,158,11,0.3); }
+        .btn-warning:hover { background: #d97706; }
+        .btn-danger { background: var(--danger); color: white; box-shadow: 0 2px 8px rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary-bg); }
+        .btn-ghost { background: var(--bg-accent); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-ghost:hover { background: var(--border-color); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-lg { padding: 14px 28px; font-size: 16px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .round-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-accent); border-radius: var(--radius-sm); margin-bottom: 8px; border: 1px solid var(--border-light); flex-wrap: wrap; }
+        .round-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; min-width: 72px; text-align: center; }
+        .time-input { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--bg-secondary); color: var(--text-primary); outline: none; transition: var(--transition); width: 130px; }
+        .time-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); }
+
+        .center-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: 16px; overflow: hidden; transition: var(--transition); }
+        .center-card:hover { box-shadow: var(--shadow-md); }
+        .center-card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--bg-accent); border-bottom: 1px solid var(--border-light); cursor: pointer; }
+        .center-card-header:hover { background: var(--primary-bg); }
+        .center-number { width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+        .center-card-body { padding: 20px; }
+        .lab-row { display: grid; grid-template-columns: 1fr 120px 50px; gap: 10px; align-items: center; padding: 10px 14px; background: var(--bg-accent); border-radius: var(--radius-sm); margin-bottom: 6px; border: 1px solid var(--border-light); }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px; transition: var(--transition); }
+        .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .stat-icon { width: 42px; height: 42px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 14px; }
+        .stat-value { font-size: 28px; font-weight: 800; color: var(--text-primary); line-height: 1; margin-bottom: 4px; }
+        .stat-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+
+        .table-container { overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th { background: var(--bg-accent); padding: 12px 16px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid var(--border-color); position: sticky; top: 0; white-space: nowrap; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        .data-table td { padding: 10px 16px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+        .data-table tbody tr:hover { background: var(--primary-bg); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 600; }
+        .badge-primary { background: var(--primary-bg); color: var(--primary); }
+        .badge-success { background: var(--success-bg); color: var(--success); }
+        .badge-warning { background: var(--warning-bg); color: var(--warning); }
+        .badge-info { background: var(--info-bg); color: var(--info); }
+        .badge-danger { background: var(--danger-bg); color: var(--danger); }
+
+        .distribution-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .day-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; }
+        .day-card-header { padding: 14px 18px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .day-card-body { padding: 14px 18px; }
+        .round-block { padding: 10px 14px; background: var(--bg-accent); border-radius: var(--radius-sm); margin-bottom: 8px; border-left: 3px solid var(--primary); }
+        .round-block-header { display: flex; justify-content: space-between; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+        .capacity-bar { height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
+        .capacity-fill { height: 100%; background: linear-gradient(90deg, var(--success), var(--primary)); border-radius: 3px; transition: width 0.8s ease; }
+
+        .chart-container { position: relative; height: 320px; padding: 10px; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--bg-card); border-radius: var(--radius-xl); padding: 32px; max-width: 800px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalSlide 0.3s ease; }
+        @keyframes modalSlide { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .modal-title { font-size: 20px; font-weight: 700; }
+        .modal-close { background: var(--bg-accent); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .modal-close:hover { background: var(--danger-bg); color: var(--danger); }
+
+        .search-bar { position: relative; margin-bottom: 16px; }
+        .search-bar i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        .search-bar input { width: 100%; padding: 10px 14px 10px 40px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--bg-secondary); color: var(--text-primary); outline: none; transition: var(--transition); }
+        .search-bar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); }
+
+        .page-navigation { display: flex; justify-content: space-between; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+
+        .app-footer { text-align: center; padding: 24px 32px; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border-color); background: var(--bg-secondary); }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 14px 20px; border-radius: var(--radius-sm); color: white; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px; animation: toastIn 0.3s ease; min-width: 280px; }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--info); }
+        .toast.warning { background: var(--warning); }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+
+        .tabs { display: flex; gap: 4px; background: var(--bg-accent); padding: 4px; border-radius: var(--radius-sm); margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { flex: 1; padding: 10px 16px; border: none; background: transparent; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; color: var(--text-secondary); transition: var(--transition); text-align: center; min-width: 90px; }
+        .tab.active { background: var(--bg-card); color: var(--primary); box-shadow: var(--shadow-sm); }
+        .tab:hover:not(.active) { color: var(--text-primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeSlideIn 0.3s ease; }
+
+        .scrollable-table { max-height: 500px; overflow-y: auto; }
+
+        .toggle-switch { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+        .toggle-switch input { display: none; }
+        .toggle-slider { width: 44px; height: 24px; background: var(--border-color); border-radius: 12px; position: relative; transition: var(--transition); flex-shrink: 0; }
+        .toggle-slider::after { content: ''; width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: var(--transition); box-shadow: var(--shadow-sm); }
+        .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+        .toggle-switch input:checked + .toggle-slider::after { left: 23px; }
+
+        .conflict-alert { padding: 16px 20px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-md); margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; }
+        .conflict-alert i { color: var(--danger); font-size: 18px; margin-top: 2px; flex-shrink: 0; }
+        .conflict-alert-content { flex: 1; }
+        .conflict-alert-title { font-weight: 700; font-size: 14px; color: var(--danger); margin-bottom: 4px; }
+        .conflict-alert-text { font-size: 13px; color: var(--text-secondary); }
+
+        .dnd-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .dnd-lab { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 100px; }
+        .dnd-lab-header { padding: 12px 16px; background: var(--bg-accent); border-bottom: 1px solid var(--border-light); font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; align-items: center; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+        .dnd-lab-body { padding: 8px; min-height: 60px; transition: var(--transition); }
+        .dnd-lab-body.drag-over { background: var(--primary-bg); outline: 2px dashed var(--primary); outline-offset: -4px; border-radius: 0 0 var(--radius-md) var(--radius-md); }
+        .dnd-item { padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 6px; margin-bottom: 4px; font-size: 12px; cursor: grab; transition: var(--transition); display: flex; justify-content: space-between; align-items: center; }
+        .dnd-item:hover { box-shadow: var(--shadow-sm); border-color: var(--primary); }
+        .dnd-item.dragging { opacity: 0.4; }
+        .dnd-item-name { font-weight: 600; }
+        .dnd-item-id { color: var(--text-muted); font-size: 11px; }
+
+        .profile-card { padding: 16px; background: var(--bg-accent); border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; transition: var(--transition); }
+        .profile-card:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); }
+        .profile-card-info { flex: 1; }
+        .profile-card-name { font-weight: 700; font-size: 14px; }
+        .profile-card-meta { font-size: 12px; color: var(--text-muted); }
+        .profile-card-actions { display: flex; gap: 6px; }
+
+        .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+        .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+        .empty-state p { font-size: 15px; }
+
+        .progress-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:3000; align-items:center; justify-content:center; }
+        .progress-overlay.show { display:flex; }
+        .progress-box { background:var(--bg-card); border-radius:var(--radius-lg); padding:40px 48px; text-align:center; box-shadow:var(--shadow-xl); }
+        .progress-box i { font-size:32px; color:var(--primary); margin-bottom:16px; animation: spin 1.2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .progress-box p { font-size:15px; font-weight:600; color:var(--text-primary); }
+        .progress-box .progress-sub { font-size:12px; color:var(--text-muted); margin-top:6px; }
+
+        @media print {
+            .app-header, .stepper-container, .page-navigation, .btn, .header-actions, .no-print { display: none !important; }
+            .page { display: block !important; }
+            .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+            body { background: white; }
+        }
+        @media (max-width: 768px) {
+            .header-inner { padding: 12px 16px; }
+            .header-title { font-size: 16px; }
+            .main-content { padding: 16px; }
+            .stepper { flex-wrap: wrap; gap: 4px; }
+            .step { padding: 8px 10px; }
+            .step-label { display: none; }
+            .step-connector { width: 16px; }
+            .form-row { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .distribution-grid { grid-template-columns: 1fr; }
+            .dnd-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+<div class="progress-overlay" id="progressOverlay"><div class="progress-box"><i class="fas fa-spinner"></i><p id="progressText">Generating...</p><div class="progress-sub" id="progressSub"></div></div></div>
+
+<!-- HEADER -->
+<header class="app-header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <div class="header-logo"><i class="fas fa-graduation-cap"></i></div>
+            <div>
+                <div class="header-title">Assessment Management System</div>
+                <div class="header-subtitle">Multi-Center Exam Management</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="admin.html" class="header-btn" title="Open Admin Portal" style="background:#312e81;color:#fff;text-decoration:none;"><i class="fas fa-shield-alt"></i> Admin Portal</a>
+            <a href="supervisor.html" class="header-btn" title="Open Supervisor Portal" style="background:var(--success);color:#fff;text-decoration:none;"><i class="fas fa-user-shield"></i> Supervisor Portal</a>
+            <button class="header-btn" onclick="resetApp()" title="Clear everything and start fresh" style="background:var(--danger);color:#fff;"><i class="fas fa-redo"></i> Reset</button>
+            <button class="header-btn" onclick="openAttendanceModal()" title="Record attendance per center" style="background:var(--info);color:#fff;"><i class="fas fa-clipboard-check"></i> Attendance</button>
+            <button class="header-btn" onclick="openMailMergeModal()" title="Send admission cards via email" style="background:var(--warning);color:#fff;"><i class="fas fa-envelope"></i> Mail Merge</button>
+            <button class="header-btn" onclick="openSavedRunsModal()" title="Saved Runs" style="background:var(--success);color:#fff;"><i class="fas fa-history"></i> Saved Runs</button>
+            <button class="header-btn" onclick="saveConfig()" title="Save configuration"><i class="fas fa-save"></i> Save Config</button>
+            <button class="header-btn" onclick="loadConfig()" title="Load configuration"><i class="fas fa-folder-open"></i> Load Config</button>
+            <button class="header-btn" onclick="toggleTheme()" id="themeToggle" title="Toggle theme"><i class="fas fa-moon"></i></button>
+        </div>
+    </div>
+</header>
+
+<!-- STEPPER -->
+<nav class="stepper-container">
+    <div class="stepper">
+        <div class="step active" onclick="goToStep(0)"><div class="step-number">1</div><span class="step-label">Exam Settings</span></div>
+        <div class="step-connector"></div>
+        <div class="step" onclick="goToStep(1)"><div class="step-number">2</div><span class="step-label">Upload Data</span></div>
+        <div class="step-connector"></div>
+        <div class="step" onclick="goToStep(2)"><div class="step-number">3</div><span class="step-label">Schedule</span></div>
+        <div class="step-connector"></div>
+        <div class="step" onclick="goToStep(3)"><div class="step-number">4</div><span class="step-label">Centers &amp; Labs</span></div>
+        <div class="step-connector"></div>
+        <div class="step" onclick="goToStep(4)"><div class="step-number">5</div><span class="step-label">Distribute</span></div>
+        <div class="step-connector"></div>
+        <div class="step" onclick="goToStep(5)"><div class="step-number">6</div><span class="step-label">Export &amp; Reports</span></div>
+    </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main-content">
+
+    <!-- ===== PAGE 0: EXAM SETTINGS ===== -->
+    <section class="page active" id="page-0">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon primary"><i class="fas fa-cogs"></i></div>
+                <div><div class="card-title">Exam Settings</div><div class="card-description">Configure the basic exam information before proceeding</div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Exam Name / Title</label><input type="text" class="form-input" id="examName" placeholder="e.g. Annual IT Certification Exam"></div>
+                <div class="form-group"><label class="form-label">Organizing Entity</label><input type="text" class="form-input" id="examOrganizer" placeholder="e.g. Ministry of Education"></div>
+                <div class="form-group"><label class="form-label">Exam Year</label><input type="number" class="form-input" id="examYear" value="2026" min="2020" max="2040"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Exam Start Date</label><input type="date" class="form-input" id="examStartDate"></div>
+                <div class="form-group"><label class="form-label">Rounds Per Day</label><input type="number" class="form-input" id="roundsPerDay" min="1" max="20" value="2" oninput="autoGenerateRoundTimings()"></div>
+            </div>
+            <div style="margin-top:16px;padding:16px;background:var(--info-bg);border-radius:var(--radius-md);border:1px solid rgba(59,130,246,0.2);">
+                <div style="font-weight:600;font-size:14px;color:var(--info);margin-bottom:6px;"><i class="fas fa-info-circle"></i> Examinee List Template</div>
+                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Your Excel file should have these columns: <strong>Name, Employee ID, Email, Sector, Job Category, Exam Name, Preferred Emirate</strong></p>
+                <button class="btn btn-sm btn-outline" onclick="downloadTemplate()"><i class="fas fa-download"></i> Download Excel Template</button>
+            </div>
+        </div>
+
+        <!-- CENTER PROFILES -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon success"><i class="fas fa-building"></i></div>
+                <div><div class="card-title">Exam Center Profiles</div><div class="card-description">Manage reusable center profiles with labs and capacities &mdash; saved in browser for future use</div></div>
+            </div>
+            <div class="btn-group" style="margin-bottom:16px;">
+                <button class="btn btn-primary btn-sm" onclick="openAddProfileModal()"><i class="fas fa-plus"></i> Add New Center Profile</button>
+            </div>
+            <div id="centerProfilesList"><div class="empty-state"><i class="fas fa-building"></i><p>No center profiles saved yet. Add one to get started.</p></div></div>
+        </div>
+
+        <div class="page-navigation"><div></div>
+            <button class="btn btn-primary btn-lg" onclick="goToStep(1)">Continue <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- ===== PAGE 1: UPLOAD DATA ===== -->
+    <section class="page" id="page-1">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon primary"><i class="fas fa-file-excel"></i></div>
+                <div><div class="card-title">Upload Examinees Data</div><div class="card-description">Upload an Excel file (.xlsx, .xls) or CSV containing: Name, Employee ID, Email, Sector, Job Category, Exam Name, Preferred Emirate</div></div>
+            </div>
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(event)">
+                <div class="drop-zone-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div class="drop-zone-text">Drop your Excel file here or click to browse</div>
+                <div class="drop-zone-hint">Supports .xlsx, .xls and .csv files</div>
+            </div>
+            <div class="file-info" id="fileInfo">
+                <div class="file-info-icon"><i class="fas fa-check"></i></div>
+                <div class="file-info-text"><div class="file-info-name" id="fileName"></div><div class="file-info-meta" id="fileMeta"></div></div>
+                <button class="btn btn-sm btn-ghost" onclick="removeFile()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="form-group" style="margin-top:16px"><label class="form-label">Select Sheet</label><select class="form-select" id="sheetSelect" onchange="loadSheet(this.value)"><option value="">Upload a file first</option></select></div>
+        </div>
+        <div class="card" id="previewCard" style="display:none">
+            <div class="card-header">
+                <div class="card-icon info"><i class="fas fa-table"></i></div>
+                <div><div class="card-title">Data Preview</div><div class="card-description" id="previewCount">0 examinees loaded</div></div>
+            </div>
+            <div class="table-container scrollable-table" id="previewTable"></div>
+        </div>
+        <div class="page-navigation">
+            <button class="btn btn-ghost btn-lg" onclick="goToStep(0)"><i class="fas fa-arrow-left"></i> Back</button>
+            <button class="btn btn-primary btn-lg" onclick="goToStep(2)">Continue <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- ===== PAGE 2: SCHEDULE ===== -->
+    <section class="page" id="page-2">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon warning"><i class="fas fa-clock"></i></div>
+                <div><div class="card-title">Round Timings</div><div class="card-description">Adjust the timing for each exam round. Slots are auto-generated based on the number of rounds set in Exam Settings.</div></div>
+            </div>
+            <div id="roundTimings"></div>
+        </div>
+        <div class="page-navigation">
+            <button class="btn btn-ghost btn-lg" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Back</button>
+            <button class="btn btn-primary btn-lg" onclick="goToStep(3)">Continue <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- ===== PAGE 3: CENTERS & LABS ===== -->
+    <section class="page" id="page-3">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon success"><i class="fas fa-building"></i></div>
+                <div><div class="card-title">Select Exam Centers for This Exam</div><div class="card-description">Choose from saved center profiles or add manually. Each center is associated with an emirate for matching.</div></div>
+            </div>
+            <div class="form-inline" style="margin-bottom:16px;">
+                <div class="form-group"><label class="form-label">Add Center from Profile</label><select class="form-select" id="profileDropdown" style="width:300px;"><option value="">-- Select a saved profile --</option></select></div>
+                <button class="btn btn-primary" onclick="addCenterFromProfile()"><i class="fas fa-plus-circle"></i> Add Selected</button>
+                <button class="btn btn-outline" onclick="addManualCenter()"><i class="fas fa-edit"></i> Add Manual Center</button>
+            </div>
+            <div id="selectedCentersContainer"></div>
+            <div id="noSelectedCenters" class="empty-state"><i class="fas fa-building"></i><p>No centers selected yet. Add from your saved profiles or manually.</p></div>
+        </div>
+        <div class="page-navigation">
+            <button class="btn btn-ghost btn-lg" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
+            <button class="btn btn-primary btn-lg" onclick="goToStep(4)">Continue <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- ===== PAGE 4: DISTRIBUTE ===== -->
+    <section class="page" id="page-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon primary"><i class="fas fa-magic"></i></div>
+                <div><div class="card-title">Distribution Settings</div><div class="card-description">Configure how examinees are distributed across centers, labs, and rounds</div></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;margin-bottom:20px;">
+                <label class="toggle-switch"><input type="checkbox" id="shuffleToggle" checked><div class="toggle-slider"></div><span style="font-size:14px;font-weight:500;"><i class="fas fa-random"></i> Shuffle / Randomize</span></label>
+                <label class="toggle-switch"><input type="checkbox" id="loadBalanceToggle" checked><div class="toggle-slider"></div><span style="font-size:14px;font-weight:500;"><i class="fas fa-balance-scale"></i> Load Balancing</span></label>
+                <label class="toggle-switch"><input type="checkbox" id="conflictToggle" checked><div class="toggle-slider"></div><span style="font-size:14px;font-weight:500;"><i class="fas fa-exclamation-triangle"></i> Conflict Detection</span></label>
+            </div>
+            <div style="padding:12px 16px;background:var(--info-bg);border-radius:var(--radius-sm);margin-bottom:20px;font-size:13px;color:var(--text-secondary);"><i class="fas fa-map-marker-alt" style="color:var(--info);margin-right:6px;"></i> Examinees will be distributed to centers matching their <strong>Preferred Emirate</strong>. Extra days will be added automatically if capacity is insufficient.</div>
+            <div style="text-align:center;"><button class="btn btn-success btn-lg" onclick="runDistribution()"><i class="fas fa-play-circle"></i> Analyze &amp; Distribute Examinees</button></div>
+        </div>
+
+        <div id="conflictsContainer" style="display:none;"></div>
+        <div class="stats-grid" id="statsGrid" style="display:none"></div>
+
+        <div id="resultSection" style="display:none">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(this,'tabVisual')"><i class="fas fa-th-large"></i> Visual</button>
+                <button class="tab" onclick="switchTab(this,'tabTable')"><i class="fas fa-list"></i> Summary</button>
+                <button class="tab" onclick="switchTab(this,'tabChart')"><i class="fas fa-chart-bar"></i> Chart</button>
+                <button class="tab" onclick="switchTab(this,'tabDnD')"><i class="fas fa-arrows-alt"></i> Re-distribute</button>
+            </div>
+            <div class="tab-content active" id="tabVisual"><div class="distribution-grid" id="visualGrid"></div></div>
+            <div class="tab-content" id="tabTable"><div class="table-container scrollable-table" id="distributionTable"></div></div>
+            <div class="tab-content" id="tabChart"><div class="card"><div class="chart-container"><canvas id="distributionChart"></canvas></div></div></div>
+            <div class="tab-content" id="tabDnD">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon info"><i class="fas fa-arrows-alt"></i></div>
+                        <div><div class="card-title">Drag &amp; Drop Re-distribution</div><div class="card-description">Select a day and round, then drag examinees between labs</div></div>
+                    </div>
+                    <div class="form-inline" style="margin-bottom:16px;">
+                        <div class="form-group"><label class="form-label">Day</label><select class="form-select" id="dndDaySelect" onchange="renderDnD()" style="width:120px;"></select></div>
+                        <div class="form-group"><label class="form-label">Round</label><select class="form-select" id="dndRoundSelect" onchange="renderDnD()" style="width:120px;"></select></div>
+                    </div>
+                    <div class="dnd-container" id="dndContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-navigation">
+            <button class="btn btn-ghost btn-lg" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
+            <button class="btn btn-primary btn-lg" onclick="goToStep(5)">Continue to Export <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- ===== PAGE 5: EXPORT & REPORTS ===== -->
+    <section class="page" id="page-5">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon warning"><i class="fas fa-download"></i></div>
+                <div><div class="card-title">Export Distribution</div><div class="card-description">Download the exam distribution in your preferred format</div></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Export Excel (per day)</button>
+                <button class="btn btn-danger" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i> Full PDF Report</button>
+                <button class="btn btn-primary" onclick="exportFullExcel()"><i class="fas fa-file-export"></i> Export All (single file)</button>
+                <button class="btn btn-ghost" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon info"><i class="fas fa-building"></i></div>
+                <div><div class="card-title">Per-Center Reports</div><div class="card-description">Generate a comprehensive PDF for each center director with dashboard, stats, and full examinee list including attendance</div></div>
+            </div>
+            <div id="perCenterBtns" class="btn-group" style="flex-wrap:wrap;"><span style="color:var(--text-muted);font-size:13px;">Run distribution first</span></div>
+            <div id="perCenterExcelBtns" class="btn-group" style="margin-top:12px;flex-wrap:wrap;border-top:1px solid var(--border-light);padding-top:12px;display:none;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon success"><i class="fas fa-clipboard-list"></i></div>
+                <div><div class="card-title">Attendance Sheets</div><div class="card-description">Generate printable attendance/check-in sheets per lab per round</div></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="generateAllAttendanceSheets()"><i class="fas fa-clipboard-list"></i> All Attendance Sheets (PDF)</button>
+                <button class="btn btn-outline" onclick="exportAttendanceExcel()"><i class="fas fa-file-excel"></i> Attendance Sheets (Excel)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon danger"><i class="fas fa-id-card"></i></div>
+                <div><div class="card-title">Examinee Admission Cards</div><div class="card-description">Generate admission slips with QR codes linking to the center on Google Maps</div></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-warning" onclick="generateIndividualAdmissionCards()"><i class="fas fa-download"></i> Individual Cards (saved one by one)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon primary"><i class="fas fa-search"></i></div>
+                <div><div class="card-title">Examinee Lookup</div><div class="card-description">Search for a specific examinee</div></div>
+            </div>
+            <div class="search-bar"><i class="fas fa-search"></i><input type="text" id="lookupSearch" placeholder="Search by name, ID, or any field..." oninput="lookupExaminee(this.value)"></div>
+            <div class="table-container scrollable-table" id="lookupResults" style="display:none"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon primary"><i class="fas fa-list-alt"></i></div>
+                <div><div class="card-title">Full Assignment List</div><div class="card-description">Complete list of all examinee assignments</div></div>
+            </div>
+            <div class="search-bar"><i class="fas fa-filter"></i><input type="text" id="fullTableFilter" placeholder="Filter assignments..." oninput="filterFullTable(this.value)"></div>
+            <div class="table-container scrollable-table" id="fullAssignmentTable"><div class="empty-state"><i class="fas fa-inbox"></i><p>Run the distribution first to see assignments here</p></div></div>
+        </div>
+
+        <div class="page-navigation">
+            <button class="btn btn-ghost btn-lg" onclick="goToStep(4)"><i class="fas fa-arrow-left"></i> Back</button>
+            <div></div>
+        </div>
+    </section>
+</main>
+
+<!-- ATTENDANCE MODAL -->
+<div class="modal-overlay" id="attendanceModal">
+    <div class="modal" style="max-width:1100px;max-height:90vh;display:flex;flex-direction:column;">
+        <div class="modal-header" style="flex-shrink:0;">
+            <div class="modal-title"><i class="fas fa-clipboard-check" style="color:var(--info);margin-right:8px;"></i> Attendance Tracking</div>
+            <button class="modal-close" onclick="closeAttendanceModal()">&times;</button>
+        </div>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;flex-shrink:0;">Mark examinees as Present or Absent for each center. This data will be included in the per-center PDF report.</p>
+        <div style="display:flex;gap:12px;margin-bottom:12px;flex-shrink:0;flex-wrap:wrap;align-items:center;">
+            <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px;">
+                <select class="form-select" id="attCenterSelect" onchange="renderAttendanceList()">
+                    <option value="">-- Select Center --</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;min-width:120px;">
+                <select class="form-select" id="attDayFilter" onchange="renderAttendanceList()">
+                    <option value="">All Days</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;min-width:120px;">
+                <select class="form-select" id="attRoundFilter" onchange="renderAttendanceList()">
+                    <option value="">All Rounds</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm btn-success" onclick="markAllAttendance(true)"><i class="fas fa-check-double"></i> All Present</button>
+                <button class="btn btn-sm btn-danger" onclick="markAllAttendance(false)"><i class="fas fa-times"></i> All Absent</button>
+                <button class="btn btn-sm btn-ghost" onclick="clearAllAttendance()"><i class="fas fa-eraser"></i> Clear</button>
+            </div>
+        </div>
+        <div id="attSummary" style="display:flex;gap:16px;margin-bottom:12px;flex-shrink:0;"></div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-shrink:0;">
+            <div class="search-bar" style="flex:1;"><i class="fas fa-search"></i><input type="text" id="attSearch" placeholder="Search by name or ID..." oninput="renderAttendanceList()"></div>
+        </div>
+        <div id="attendanceListContainer" style="flex:1;overflow-y:auto;min-height:200px;"></div>
+    </div>
+</div>
+
+<!-- MAIL MERGE MODAL -->
+<div class="modal-overlay" id="mailMergeModal">
+    <div class="modal" style="max-width:960px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-envelope" style="color:var(--warning);margin-right:8px;"></i> Smart Mail Merge</div>
+            <button class="modal-close" onclick="closeMailMergeModal()">&times;</button>
+        </div>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Send admission cards to examinees directly via Outlook. Generates a PowerShell script that automates Outlook to send all emails.</p>
+
+        <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Email Subject</label>
+            <input type="text" class="form-input" id="mmSubject" placeholder="e.g. Your Exam Admission Card">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="form-group">
+                <label class="form-label">English Message</label>
+                <textarea class="form-input" id="mmEnglish" rows="8" style="resize:vertical;font-family:inherit;" placeholder="Dear Examinee,\n\nPlease find attached your admission card for the upcoming exam.\n\nBest regards"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Arabic Message <span style='font-size:11px;color:var(--text-muted);'>(RTL)</span></label>
+                <textarea class="form-input" id="mmArabic" rows="8" dir="rtl" style="resize:vertical;font-family:'Sakkal Majalla',inherit;text-align:right;" placeholder="\u0639\u0632\u064a\u0632\u064a \u0627\u0644\u0645\u062a\u0642\u062f\u0645\u060c\n\n\u064a\u0631\u062c\u0649 \u0627\u0644\u0627\u0637\u0644\u0627\u0639 \u0639\u0644\u0649 \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u062f\u062e\u0648\u0644 \u0627\u0644\u0645\u0631\u0641\u0642\u0629 \u0644\u0644\u0627\u0645\u062a\u062d\u0627\u0646 \u0627\u0644\u0642\u0627\u062f\u0645.\n\n\u0645\u0639 \u0623\u0637\u064a\u0628 \u0627\u0644\u062a\u062d\u064a\u0627\u062a"></textarea>
+            </div>
+        </div>
+
+        <div style="padding:12px 16px;background:var(--info-bg);border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;color:var(--text-secondary);">
+            <i class="fas fa-info-circle" style="color:var(--info);margin-right:6px;"></i>
+            <strong>How it works:</strong><br>
+            1. Fill in the subject and messages above<br>
+            2. Click the button below and select the folder with admission card PDFs<br>
+            3. Two files will be saved: <code>Send_Emails.ps1</code> + <code>Send_Emails.bat</code><br>
+            4. Double-click <strong>Send_Emails.bat</strong> &mdash; Outlook will send all emails automatically
+        </div>
+
+        <div class="btn-group" style="margin-bottom:16px;">
+            <button class="btn btn-warning" onclick="runMailMerge()"><i class="fas fa-paper-plane"></i> Generate &amp; Save Send Script</button>
+        </div>
+
+        <div style="position:relative;height:6px;background:var(--bg-accent);border-radius:4px;margin-bottom:12px;overflow:hidden;">
+            <div id="mmProgress" style="height:100%;width:0%;background:var(--success);border-radius:4px;transition:width 0.2s;font-size:10px;color:#fff;text-align:center;line-height:6px;"></div>
+        </div>
+        <pre id="mmLog" style="max-height:200px;overflow-y:auto;background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:12px;font-family:Consolas,monospace;white-space:pre-wrap;color:var(--text-primary);"></pre>
+    </div>
+</div>
+
+<!-- SAVED RUNS MODAL -->
+<div class="modal-overlay" id="savedRunsModal">
+    <div class="modal" style="max-width:900px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-history" style="color:var(--success);margin-right:8px;"></i> Saved Runs</div>
+            <button class="modal-close" onclick="closeSavedRunsModal()">&times;</button>
+        </div>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Load a previously saved distribution run or save your current work</p>
+        <div class="btn-group" style="margin-bottom:16px;">
+            <button class="btn btn-primary" onclick="saveCurrentRun()"><i class="fas fa-save"></i> Save Current Run</button>
+        </div>
+        <div id="savedRunsList"></div>
+    </div>
+</div>
+
+<!-- CENTER PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title" id="profileModalTitle">Add Center Profile</div>
+            <button class="modal-close" onclick="closeProfileModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="editProfileId">
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Profile Name (for reference)</label><input type="text" class="form-input" id="profileName" placeholder="e.g. Main Campus"></div>
+            <div class="form-group"><label class="form-label">Center Name</label><input type="text" class="form-input" id="profileCenterName" placeholder="e.g. Engineering Building"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Emirate</label>
+                <select class="form-select" id="profileEmirate">
+                    <option value="">-- Select Emirate --</option>
+                    <option value="Abu Dhabi">Abu Dhabi</option>
+                    <option value="Al Ain">Al Ain</option>
+                    <option value="Dubai">Dubai</option>
+                    <option value="Sharjah">Sharjah</option>
+                    <option value="Ajman">Ajman</option>
+                    <option value="Umm Al Quwain">Umm Al Quwain</option>
+                    <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                    <option value="Fujairah">Fujairah</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">Google Maps Link</label><input type="url" class="form-input" id="profileMapsLink" placeholder="https://maps.google.com/..."></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Address</label><input type="text" class="form-input" id="profileAddress" placeholder="Full address"></div>
+            <div class="form-group"><label class="form-label">Contact Person</label><input type="text" class="form-input" id="profileContact" placeholder="Center director name"></div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border-color);margin:16px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <label class="form-label" style="margin-bottom:0;">Labs / Halls</label>
+            <button class="btn btn-sm btn-outline" onclick="addProfileLabRow()"><i class="fas fa-plus"></i> Add Lab</button>
+        </div>
+        <div id="profileLabsContainer"></div>
+        <div style="margin-top:20px;text-align:right;">
+            <button class="btn btn-ghost" onclick="closeProfileModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveProfile()" style="margin-left:8px;"><i class="fas fa-save"></i> Save Profile</button>
+        </div>
+    </div>
+</div>
+
+<footer class="app-footer">
+    <p>Created by <strong>Eng. Firas Kiftaro</strong> &mdash; Assessment Management System v4.0 &copy; 2025-2026</p>
+</footer>
+
+<script>
+// ================= CONSTANTS =================
+const UAE_EMIRATES = ['Abu Dhabi','Al Ain','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];
+
+// ================= STATE =================
+const state = {
+    workbook: null, sheetNames: [], currentSheet: null,
+    examinees: [], headers: [],
+    examName: '', examOrganizer: '', examYear: 2026, examStartDate: '',
+    roundsPerDay: 2, roundTimings: [],
+    selectedCenters: [],
+    distribution: null, assignments: [], conflicts: []
+};
+let distributionChart = null;
+
+// ================= THEME =================
+function toggleTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.getElementById('themeToggle').innerHTML = next === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+}
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved) { document.documentElement.setAttribute('data-theme', saved); if (saved === 'dark') document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>'; }
+})();
+
+// ================= TOAST =================
+function showToast(msg, type = 'info') {
+    const icons = { success: 'check-circle', error: 'exclamation-circle', info: 'info-circle', warning: 'exclamation-triangle' };
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<i class="fas fa-${icons[type]}"></i> ${msg}`;
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+// ================= STEPPER =================
+let currentStep = 0;
+function goToStep(step) {
+    if (step > 1 && state.examinees.length === 0) { showToast('Please upload an Excel file first', 'warning'); step = 1; }
+    currentStep = step;
+    document.querySelectorAll('.page').forEach((p, i) => p.classList.toggle('active', i === step));
+    document.querySelectorAll('.step').forEach((s, i) => { s.classList.remove('active', 'completed'); if (i === step) s.classList.add('active'); else if (i < step) s.classList.add('completed'); });
+    document.querySelectorAll('.step-connector').forEach((c, i) => c.classList.toggle('completed', i < step));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (step === 2) autoGenerateRoundTimings();
+    if (step === 3) refreshProfileDropdown();
+    if (step === 5) { renderPerCenterButtons(); }
+}
+
+function openSavedRunsModal() { renderSavedRuns(); document.getElementById('savedRunsModal').classList.add('show'); }
+function closeSavedRunsModal() { document.getElementById('savedRunsModal').classList.remove('show'); }
+
+// ================= MAIL MERGE =================
+function openMailMergeModal() { document.getElementById('mailMergeModal').classList.add('show'); }
+function closeMailMergeModal() { document.getElementById('mailMergeModal').classList.remove('show'); }
+
+async function runMailMerge() {
+    const subject = document.getElementById('mmSubject').value.trim();
+    const englishMsg = document.getElementById('mmEnglish').value.trim();
+    const arabicMsg = document.getElementById('mmArabic').value.trim();
+    const log = document.getElementById('mmLog');
+    const progressBar = document.getElementById('mmProgress');
+    log.textContent = ''; progressBar.style.width = '0%';
+
+    if(!subject) { showToast('Please enter an email subject','warning'); return; }
+    if(!englishMsg && !arabicMsg) { showToast('Please enter a message (English and/or Arabic)','warning'); return; }
+    if(!state.assignments.length) { showToast('No distribution data. Run distribution first.','warning'); return; }
+
+    const emailField = findField(['Email','email','E-mail','EMAIL','e-mail']);
+    const nameField = findField(['Name_En','Name_Ar','Name','name','Full Name']);
+    if(!emailField) { showToast('Email column not found in examinee data','error'); return; }
+
+    // Select cards folder
+    let cardsDir;
+    try {
+        cardsDir = await window.showDirectoryPicker({ mode:'readwrite', id:'mailmerge-cards' });
+    } catch(e) { if(e.name==='AbortError') return; showToast('Folder selection not supported. Use Chrome or Edge.','error'); return; }
+
+    log.textContent = 'Reading PDF files from cards folder...\n';
+
+    // Index all PDF files from cards folder
+    const pdfFileNames = [];
+    for await (const [name, handle] of cardsDir) {
+        if(handle.kind === 'file' && name.toLowerCase().endsWith('.pdf')) {
+            pdfFileNames.push(name);
+        }
+    }
+    log.textContent += `Found ${pdfFileNames.length} PDF file(s) in cards folder.\n\n`;
+    if(!pdfFileNames.length) { showToast('No PDF files found in the selected folder','error'); return; }
+
+    // Deduplicate assignments by email
+    const seen = new Set();
+    const unique = state.assignments.filter(a => {
+        const em = String(a[emailField]||'').trim().toLowerCase();
+        if(!em || seen.has(em)) return false;
+        seen.add(em); return true;
+    });
+
+    // Build email entries: match each examinee to their card file(s)
+    const emailEntries = [];
+    let matched = 0, unmatched = 0;
+    const total = unique.length;
+
+    for(let i = 0; i < total; i++) {
+        const a = unique[i];
+        const email = String(a[emailField]||'').trim();
+        const name = String(a[nameField]||'').trim();
+        const safeName = name.replace(/[^a-zA-Z0-9 _\-]/g,'_').replace(/\s+/g,'_');
+
+        if(!email) { log.textContent += `\u26a0\ufe0f Skipped (no email): ${name}\n`; unmatched++; continue; }
+
+        // Find matching PDF(s)
+        let matchedFiles = pdfFileNames.filter(f => f.includes(safeName));
+        if(!matchedFiles.length) {
+            const parts = safeName.split('_').filter(p=>p.length>2);
+            matchedFiles = pdfFileNames.filter(f => parts.every(p => f.includes(p)));
+        }
+
+        if(!matchedFiles.length) {
+            log.textContent += `\u26a0\ufe0f No card found for: ${name} (${email})\n`;
+            unmatched++;
+            continue;
+        }
+
+        emailEntries.push({ email, name, files: matchedFiles });
+        matched++;
+        log.textContent += `\u2705 Matched: ${name} \u2192 ${email} (${matchedFiles.join(', ')})\n`;
+
+        progressBar.style.width = ((i+1)/total*100) + '%';
+        await new Promise(r => setTimeout(r, 5));
+    }
+
+    if(!emailEntries.length) {
+        log.textContent += '\n\u274c No matches found. Make sure card filenames match examinee names.\n';
+        showToast('No matches found','error');
+        return;
+    }
+
+    // Build the PowerShell script
+    const engHtml = englishMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    const arHtml  = arabicMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+    const htmlBody = `<html><head><meta charset="utf-8"></head><body style="margin:0;padding:20px;font-family:Sakkal Majalla,Calibri,Arial,sans-serif;">` +
+        `<table border="0" cellpadding="20" style="width:100%;max-width:800px;margin:0 auto;">` +
+        `<tr>` +
+        `<td style="width:50%;vertical-align:top;"><div dir="ltr" style="text-align:left;font-family:Sakkal Majalla,Calibri,serif;font-size:14pt;">${engHtml}</div></td>` +
+        `<td style="width:50%;vertical-align:top;"><div dir="rtl" style="text-align:right;font-family:Sakkal Majalla,Calibri,serif;font-size:14pt;">${arHtml}</div></td>` +
+        `</tr></table></body></html>`;
+
+    let psEntries = emailEntries.map(e => {
+        const filesArr = e.files.map(f => `'${f.replace(/'/g,"''")}'`).join(',');
+        return `    @{ Email='${e.email.replace(/'/g,"''")}'; Name='${e.name.replace(/'/g,"''")}'; Files=@(${filesArr}) }`;
+    }).join('\n');
+
+    // Generate as a .bat file that invokes PowerShell with -ExecutionPolicy Bypass
+    // Generate as .ps1 with here-strings (safe for all special chars)
+    const ps1 = `# ============================================
+# Smart Mail Merge - Auto-generated by Assessment Management System
+# Generated: ${new Date().toLocaleString()}
+# ============================================
+# Double-click Send_Emails.bat to run this script
+# ============================================
+
+$ErrorActionPreference = 'Continue'
+$cardsFolder = $PSScriptRoot
+
+$subject = @'
+${subject}
+'@
+
+$htmlBody = @'
+${htmlBody}
+'@
+
+$emails = @(
+${psEntries}
+)
+
+Write-Host ''
+Write-Host '=======================================' -ForegroundColor Cyan
+Write-Host '  Smart Mail Merge - Outlook Sender' -ForegroundColor Cyan
+Write-Host '=======================================' -ForegroundColor Cyan
+Write-Host "Total emails to send: $($emails.Count)" -ForegroundColor Yellow
+Write-Host ''
+
+try {
+    $outlook = New-Object -ComObject Outlook.Application
+} catch {
+    Write-Host 'ERROR: Could not start Outlook. Make sure Outlook is installed.' -ForegroundColor Red
+    Read-Host 'Press Enter to exit'
+    exit 1
+}
+
+$sent = 0
+$failed = 0
+
+foreach ($entry in $emails) {
+    try {
+        $mail = $outlook.CreateItem(0)
+        $mail.To = $entry.Email
+        $mail.Subject = $subject
+        $mail.HTMLBody = $htmlBody
+
+        foreach ($f in $entry.Files) {
+            $fullPath = Join-Path $cardsFolder $f
+            if (Test-Path $fullPath) {
+                $mail.Attachments.Add($fullPath) | Out-Null
+            } else {
+                Write-Host "  WARNING: File not found: $f" -ForegroundColor Yellow
+            }
+        }
+
+        $mail.Send()
+        $sent++
+        Write-Host "  [OK] Sent to: $($entry.Email) ($($entry.Name))" -ForegroundColor Green
+    } catch {
+        $failed++
+        Write-Host "  [FAIL] $($entry.Email): $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+Write-Host ''
+Write-Host '=======================================' -ForegroundColor Cyan
+Write-Host "Done! Sent: $sent | Failed: $failed" -ForegroundColor $(if ($failed -eq 0) { 'Green' } else { 'Yellow' })
+Write-Host '=======================================' -ForegroundColor Cyan
+Write-Host ''
+Read-Host 'Press Enter to close'
+`;
+
+    // .bat launcher that bypasses execution policy
+    const bat = `@echo off\r\nchcp 65001 >nul\r\nPowerShell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Send_Emails.ps1"\r\npause\r\n`;
+
+    // Save both files to the cards folder
+    try {
+        // Save .ps1
+        const fh1 = await cardsDir.getFileHandle('Send_Emails.ps1', { create: true });
+        const wr1 = await fh1.createWritable();
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        await wr1.write(bom);
+        await wr1.write(ps1);
+        await wr1.close();
+
+        // Save .bat launcher
+        const fh2 = await cardsDir.getFileHandle('Send_Emails.bat', { create: true });
+        const wr2 = await fh2.createWritable();
+        await wr2.write(bat);
+        await wr2.close();
+
+        log.textContent += `\\n\\u2705 Files saved: Send_Emails.ps1 + Send_Emails.bat (${emailEntries.length} emails)\\n`;
+        log.textContent += `\\n--- HOW TO SEND ---\\n`;
+        log.textContent += `1. Open the cards folder\\n`;
+        log.textContent += `2. Double-click Send_Emails.bat\\n`;
+        log.textContent += `3. Outlook will send all ${emailEntries.length} emails automatically\\n`;
+        progressBar.style.width = '100%';
+        showToast(`Script saved! ${matched} emails matched, ${unmatched} unmatched. Double-click Send_Emails.bat to send.`, 'success');
+    } catch(e) {
+        showToast('Error saving script: ' + e.message, 'error');
+    }
+}
+
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunk = 8192;
+    for(let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+}
+
+// ================= TEMPLATE DOWNLOAD =================
+function downloadTemplate() {
+    const wb = XLSX.utils.book_new();
+    const data = [
+        { 'Name_Ar': 'أحمد علي', 'Name_En': 'Ahmed Ali', 'Employee ID': 'EMP001', 'Email': 'ahmed.ali@example.com', 'Sector': 'IT', 'Job Category': 'Engineer', 'Exam Name': 'Network Security', 'Preferred Emirate': 'Abu Dhabi' },
+        { 'Name_Ar': 'سارة حسن', 'Name_En': 'Sara Hassan', 'Employee ID': 'EMP002', 'Email': 'sara.hassan@example.com', 'Sector': 'Finance', 'Job Category': 'Analyst', 'Exam Name': 'Data Analysis', 'Preferred Emirate': 'Dubai' },
+        { 'Name_Ar': 'محمد إبراهيم', 'Name_En': 'Mohammed Ibrahim', 'Employee ID': 'EMP003', 'Email': 'mohammed.ibrahim@example.com', 'Sector': 'IT', 'Job Category': 'Developer', 'Exam Name': 'Network Security', 'Preferred Emirate': 'Sharjah' },
+        { 'Name_Ar': 'فاطمة عمر', 'Name_En': 'Fatima Omar', 'Employee ID': 'EMP004', 'Email': 'fatima.omar@example.com', 'Sector': 'HR', 'Job Category': 'Manager', 'Exam Name': 'Leadership', 'Preferred Emirate': 'Abu Dhabi' },
+        { 'Name_Ar': 'خالد ناصر', 'Name_En': 'Khalid Nasser', 'Employee ID': 'EMP005', 'Email': 'khalid.nasser@example.com', 'Sector': 'IT', 'Job Category': 'Engineer', 'Exam Name': 'Cloud Computing', 'Preferred Emirate': 'Dubai' },
+    ];
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Examinees');
+    XLSX.writeFile(wb, 'Examinees_Template.xlsx');
+    showToast('Template downloaded!', 'success');
+}
+
+// ================= CENTER PROFILES (localStorage) =================
+function getCenterProfiles() { try { return JSON.parse(localStorage.getItem('centerProfiles') || '[]'); } catch { return []; } }
+function saveCenterProfiles(profiles) { localStorage.setItem('centerProfiles', JSON.stringify(profiles)); }
+
+function renderCenterProfiles() {
+    const profiles = getCenterProfiles();
+    const el = document.getElementById('centerProfilesList');
+    if (!profiles.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><p>No center profiles saved yet. Add one to get started.</p></div>'; return; }
+    el.innerHTML = profiles.map(p => `
+        <div class="profile-card">
+            <div class="profile-card-info">
+                <div class="profile-card-name"><i class="fas fa-building" style="color:var(--primary);margin-right:6px;"></i>${esc(p.profileName || p.centerName)}</div>
+                <div class="profile-card-meta">${esc(p.centerName)}${p.emirate?' &mdash; <strong>'+esc(p.emirate)+'</strong>':''} &mdash; ${p.labs.length} lab(s), Total capacity: ${p.labs.reduce((s,l)=>s+l.capacity,0)}${p.contact ? ' &mdash; Contact: '+esc(p.contact) : ''}</div>
+            </div>
+            <div class="profile-card-actions">
+                <button class="btn btn-sm btn-outline" onclick="editProfile('${p.id}')"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProfile('${p.id}')"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`).join('');
+}
+
+function openAddProfileModal() {
+    document.getElementById('profileModalTitle').textContent = 'Add Center Profile';
+    document.getElementById('editProfileId').value = '';
+    ['profileName','profileCenterName','profileMapsLink','profileAddress','profileContact'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('profileEmirate').value = '';
+    document.getElementById('profileLabsContainer').innerHTML = '';
+    addProfileLabRow(); addProfileLabRow();
+    document.getElementById('profileModal').classList.add('show');
+}
+function closeProfileModal() { document.getElementById('profileModal').classList.remove('show'); }
+
+function addProfileLabRow() {
+    const c = document.getElementById('profileLabsContainer');
+    const n = c.children.length;
+    const d = document.createElement('div');
+    d.className = 'lab-row';
+    d.innerHTML = `<input type="text" class="form-input profile-lab-name" placeholder="Lab/Hall ${n+1} name" style="padding:8px 12px;"><input type="number" class="form-input profile-lab-cap" placeholder="Capacity" min="1" style="padding:8px 12px;"><button class="btn btn-sm btn-ghost" onclick="this.closest('.lab-row').remove()" style="padding:6px;"><i class="fas fa-trash" style="color:var(--danger);"></i></button>`;
+    c.appendChild(d);
+}
+
+function saveProfile() {
+    const pn = document.getElementById('profileName').value.trim();
+    const cn = document.getElementById('profileCenterName').value.trim();
+    if (!pn || !cn) { showToast('Profile name and center name are required', 'warning'); return; }
+    const emirate = document.getElementById('profileEmirate').value;
+    if (!emirate) { showToast('Please select an emirate for this center', 'warning'); return; }
+    const labs = [];
+    document.querySelectorAll('#profileLabsContainer .lab-row').forEach(r => {
+        labs.push({ name: r.querySelector('.profile-lab-name').value.trim() || `Lab ${labs.length+1}`, capacity: parseInt(r.querySelector('.profile-lab-cap').value) || 30 });
+    });
+    if (!labs.length) { showToast('Add at least one lab', 'warning'); return; }
+    const profiles = getCenterProfiles();
+    const editId = document.getElementById('editProfileId').value;
+    const profile = { id: editId || 'cp_'+Date.now(), profileName: pn, centerName: cn, emirate, mapsLink: document.getElementById('profileMapsLink').value.trim(), address: document.getElementById('profileAddress').value.trim(), contact: document.getElementById('profileContact').value.trim(), labs };
+    if (editId) { const i = profiles.findIndex(p => p.id === editId); if (i >= 0) profiles[i] = profile; } else profiles.push(profile);
+    saveCenterProfiles(profiles);
+    renderCenterProfiles();
+    closeProfileModal();
+    showToast(`Profile "${pn}" saved!`, 'success');
+}
+
+function editProfile(id) {
+    const p = getCenterProfiles().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('profileModalTitle').textContent = 'Edit Center Profile';
+    document.getElementById('editProfileId').value = p.id;
+    document.getElementById('profileName').value = p.profileName || '';
+    document.getElementById('profileCenterName').value = p.centerName || '';
+    document.getElementById('profileEmirate').value = p.emirate || '';
+    document.getElementById('profileMapsLink').value = p.mapsLink || '';
+    document.getElementById('profileAddress').value = p.address || '';
+    document.getElementById('profileContact').value = p.contact || '';
+    const c = document.getElementById('profileLabsContainer');
+    c.innerHTML = '';
+    p.labs.forEach(l => { addProfileLabRow(); const rows = c.querySelectorAll('.lab-row'); const last = rows[rows.length-1]; last.querySelector('.profile-lab-name').value = l.name; last.querySelector('.profile-lab-cap').value = l.capacity; });
+    document.getElementById('profileModal').classList.add('show');
+}
+
+function deleteProfile(id) {
+    if (!confirm('Delete this center profile?')) return;
+    saveCenterProfiles(getCenterProfiles().filter(p => p.id !== id));
+    renderCenterProfiles();
+    showToast('Profile deleted', 'info');
+}
+
+function refreshProfileDropdown() {
+    const profiles = getCenterProfiles();
+    document.getElementById('profileDropdown').innerHTML = '<option value="">-- Select a saved profile --</option>' + profiles.map(p => `<option value="${p.id}">${esc(p.profileName)} (${esc(p.emirate||'No Emirate')}, ${p.labs.length} labs, cap: ${p.labs.reduce((s,l)=>s+l.capacity,0)})</option>`).join('');
+}
+
+// ================= SELECTED CENTERS =================
+function addCenterFromProfile() {
+    const id = document.getElementById('profileDropdown').value;
+    if (!id) { showToast('Select a profile first', 'warning'); return; }
+    const p = getCenterProfiles().find(x => x.id === id);
+    if (!p) return;
+    if (state.selectedCenters.find(c => c.profileId === id)) { showToast('Already added', 'warning'); return; }
+    state.selectedCenters.push({ profileId: p.id, name: p.centerName, emirate: p.emirate||'', link: p.mapsLink||'', address: p.address||'', contact: p.contact||'', labs: p.labs.map(l=>({name:l.name,capacity:l.capacity})) });
+    renderSelectedCenters();
+    showToast(`Added "${p.centerName}"`, 'success');
+}
+
+function addManualCenter() {
+    state.selectedCenters.push({ profileId: null, name:'New Center', emirate:'Abu Dhabi', link:'', address:'', contact:'', labs:[{name:'Lab 1',capacity:30}] });
+    renderSelectedCenters();
+}
+
+function removeSelectedCenter(i) { state.selectedCenters.splice(i,1); renderSelectedCenters(); }
+
+function renderSelectedCenters() {
+    const c = document.getElementById('selectedCentersContainer');
+    const e = document.getElementById('noSelectedCenters');
+    if (!state.selectedCenters.length) { c.innerHTML=''; e.style.display=''; return; }
+    e.style.display='none';
+    const emirateOptions = UAE_EMIRATES.map(em => `<option value="${em}">${em}</option>`).join('');
+    c.innerHTML = state.selectedCenters.map((center,ci) => `
+        <div class="center-card" data-cidx="${ci}">
+            <div class="center-card-header" onclick="toggleCB(${ci})">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="center-number">${ci+1}</div>
+                    <span style="font-weight:600;font-size:14px;" id="sct-${ci}">${esc(center.name)}</span>
+                    <span class="badge badge-success">${esc(center.emirate||'No Emirate')}</span>
+                    <span class="badge badge-info">${center.labs.length} labs &middot; ${center.labs.reduce((s,l)=>s+l.capacity,0)} seats</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();removeSelectedCenter(${ci})"><i class="fas fa-trash"></i></button>
+                    <i class="fas fa-chevron-down" id="sch-${ci}"></i>
+                </div>
+            </div>
+            <div class="center-card-body" id="scb-${ci}">
+                <div class="form-row" style="margin-bottom:16px;">
+                    <div class="form-group"><label class="form-label">Center Name</label><input type="text" class="form-input" value="${esc(center.name)}" onchange="state.selectedCenters[${ci}].name=this.value;document.getElementById('sct-${ci}').textContent=this.value;"></div>
+                    <div class="form-group"><label class="form-label">Emirate</label><select class="form-select" onchange="state.selectedCenters[${ci}].emirate=this.value;renderSelectedCenters();">${UAE_EMIRATES.map(em=>`<option value=\"${em}\" ${center.emirate===em?'selected':''}>${em}</option>`).join('')}</select></div>
+                    <div class="form-group"><label class="form-label">Google Maps Link</label><input type="url" class="form-input" value="${esc(center.link)}" onchange="state.selectedCenters[${ci}].link=this.value"></div>
+                    <div class="form-group"><label class="form-label">Contact Person</label><input type="text" class="form-input" value="${esc(center.contact)}" onchange="state.selectedCenters[${ci}].contact=this.value"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-weight:600;font-size:13px;color:var(--text-secondary);">Labs / Halls</span>
+                    <button class="btn btn-sm btn-outline" onclick="addLabTo(${ci})"><i class="fas fa-plus"></i> Add Lab</button>
+                </div>
+                ${center.labs.map((l,li) => `
+                    <div class="lab-row">
+                        <input type="text" class="form-input" value="${esc(l.name)}" onchange="state.selectedCenters[${ci}].labs[${li}].name=this.value" style="padding:8px 12px;">
+                        <input type="number" class="form-input" value="${l.capacity}" min="1" onchange="state.selectedCenters[${ci}].labs[${li}].capacity=parseInt(this.value)||30" style="padding:8px 12px;">
+                        <button class="btn btn-sm btn-ghost" onclick="rmLab(${ci},${li})" style="padding:6px;"><i class="fas fa-trash" style="color:var(--danger);"></i></button>
+                    </div>`).join('')}
+            </div>
+        </div>`).join('');
+}
+
+function toggleCB(i) { const b=document.getElementById(`scb-${i}`), ch=document.getElementById(`sch-${i}`); const h=b.style.display==='none'; b.style.display=h?'block':'none'; ch.style.transform=h?'':'rotate(-90deg)'; }
+function addLabTo(ci) { state.selectedCenters[ci].labs.push({name:`Lab ${state.selectedCenters[ci].labs.length+1}`,capacity:30}); renderSelectedCenters(); }
+function rmLab(ci,li) { if(state.selectedCenters[ci].labs.length<=1){showToast('Must have at least one lab','warning');return;} state.selectedCenters[ci].labs.splice(li,1); renderSelectedCenters(); }
+
+// ================= FILE HANDLING =================
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]); });
+function handleFile(e) { if(e.target.files[0]) processFile(e.target.files[0]); }
+
+function processFile(file) {
+    const ext = '.'+file.name.split('.').pop().toLowerCase();
+    if(!['.xlsx','.xls','.csv'].includes(ext)){showToast('Invalid file format','error');return;}
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            state.workbook = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+            state.sheetNames = state.workbook.SheetNames;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileMeta').textContent = `${(file.size/1024).toFixed(1)} KB · ${state.sheetNames.length} sheet(s)`;
+            document.getElementById('fileInfo').classList.add('show');
+            document.getElementById('sheetSelect').innerHTML = state.sheetNames.map((s,i)=>`<option value="${s}" ${i===0?'selected':''}>${s}</option>`).join('');
+            loadSheet(state.sheetNames[0]);
+            showToast(`File loaded: ${file.name}`, 'success');
+        } catch(err) { showToast('Error reading file: '+err.message,'error'); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function loadSheet(name) {
+    if(!state.workbook||!name) return;
+    state.currentSheet = name;
+    const json = XLSX.utils.sheet_to_json(state.workbook.Sheets[name],{defval:''});
+    if(!json.length){showToast('Sheet is empty','warning');return;}
+    state.examinees = json;
+    state.headers = Object.keys(json[0]);
+    document.getElementById('previewCount').textContent = `${json.length} examinees loaded from "${name}"`;
+    document.getElementById('previewCard').style.display = 'block';
+    renderPreviewTable(json.slice(0,20));
+}
+
+function renderPreviewTable(data) {
+    if(!data.length) return;
+    const h = Object.keys(data[0]);
+    let html = '<table class="data-table"><thead><tr><th>#</th>';
+    h.forEach(c => html += `<th>${esc(c)}</th>`);
+    html += '</tr></thead><tbody>';
+    data.forEach((r,i) => { html += `<tr><td>${i+1}</td>`; h.forEach(c => html += `<td>${esc(String(r[c]||''))}</td>`); html += '</tr>'; });
+    html += '</tbody></table>';
+    if(state.examinees.length>20) html += `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">Showing 20 of ${state.examinees.length} rows</div>`;
+    document.getElementById('previewTable').innerHTML = html;
+}
+
+function removeFile() {
+    state.workbook=null; state.sheetNames=[]; state.examinees=[]; state.headers=[];
+    // Restore original fileInfo structure in case it was overwritten by loadSavedRun
+    document.getElementById('fileInfo').innerHTML = `
+        <div class="file-info-icon"><i class="fas fa-check"></i></div>
+        <div class="file-info-text"><div class="file-info-name" id="fileName"></div><div class="file-info-meta" id="fileMeta"></div></div>
+        <button class="btn btn-sm btn-ghost" onclick="removeFile()"><i class="fas fa-times"></i></button>`;
+    document.getElementById('fileInfo').classList.remove('show');
+    document.getElementById('previewCard').style.display='none';
+    document.getElementById('sheetSelect').innerHTML='<option value="">Upload a file first</option>';
+    document.getElementById('fileInput').value='';
+    showToast('File removed','info');
+}
+
+function resetApp() {
+    if(!confirm('This will clear ALL current data (exam settings, uploaded file, centers, distribution results). Saved runs in the database will NOT be deleted.\n\nContinue?')) return;
+    // Reset state
+    state.workbook=null; state.sheetNames=[]; state.currentSheet=null;
+    state.examinees=[]; state.headers=[]; state.examName=''; state.examOrganizer='';
+    state.examYear=2026; state.examStartDate=''; state.roundsPerDay=2;
+    state.roundTimings=[]; state.selectedCenters=[]; state.distribution=null;
+    state.assignments=[]; state.conflicts=[];
+
+    // Reset form fields
+    document.getElementById('examName').value='';
+    document.getElementById('examOrganizer').value='';
+    document.getElementById('examYear').value='2026';
+    document.getElementById('examStartDate').value='';
+    document.getElementById('roundsPerDay').value='2';
+
+    // Reset file upload area
+    document.getElementById('fileInfo').innerHTML = `
+        <div class="file-info-icon"><i class="fas fa-check"></i></div>
+        <div class="file-info-text"><div class="file-info-name" id="fileName"></div><div class="file-info-meta" id="fileMeta"></div></div>
+        <button class="btn btn-sm btn-ghost" onclick="removeFile()"><i class="fas fa-times"></i></button>`;
+    document.getElementById('fileInfo').classList.remove('show');
+    document.getElementById('previewCard').style.display='none';
+    document.getElementById('previewTable').innerHTML='';
+    document.getElementById('sheetSelect').innerHTML='<option value="">Upload a file first</option>';
+    document.getElementById('fileInput').value='';
+
+    // Reset schedule
+    autoGenerateRoundTimings();
+
+    // Reset centers
+    renderSelectedCenters();
+
+    // Reset distribution results
+    document.getElementById('statsGrid').style.display='none';
+    document.getElementById('statsGrid').innerHTML='';
+    document.getElementById('resultSection').style.display='none';
+    document.getElementById('conflictsContainer').style.display='none';
+    document.getElementById('visualGrid').innerHTML='';
+    document.getElementById('distributionTable').innerHTML='';
+    document.getElementById('fullAssignmentTable').innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i><p>Run the distribution first to see assignments here</p></div>';
+
+    goToStep(0);
+    showToast('Application reset. Ready for a new run.','success');
+}
+
+// ================= ROUND TIMINGS (auto-generated) =================
+function autoGenerateRoundTimings() {
+    const rounds = parseInt(document.getElementById('roundsPerDay').value);
+    if(isNaN(rounds)||rounds<1) return;
+    state.roundsPerDay = rounds;
+    state.examStartDate = document.getElementById('examStartDate').value;
+    // Preserve existing values if count hasn't changed
+    const existingStarts = document.querySelectorAll('.round-start');
+    const existingEnds = document.querySelectorAll('.round-end');
+    const existing = [];
+    for(let i=0;i<existingStarts.length;i++) existing.push({start:existingStarts[i].value, end:existingEnds[i].value});
+
+    let html = '';
+    for(let i=0;i<rounds;i++){
+        const sh = existing[i] ? '' : String(8+i*2).padStart(2,'0')+':00';
+        const eh = existing[i] ? '' : String(10+i*2).padStart(2,'0')+':00';
+        const sv = existing[i] ? existing[i].start : sh;
+        const ev = existing[i] ? existing[i].end : eh;
+        html += `<div class="round-row"><span class="round-badge">Round ${i+1}</span><label style="font-size:13px;font-weight:500;color:var(--text-secondary)">From:</label><input type="time" class="time-input round-start" value="${sv}"><label style="font-size:13px;font-weight:500;color:var(--text-secondary)">To:</label><input type="time" class="time-input round-end" value="${ev}"></div>`;
+    }
+    document.getElementById('roundTimings').innerHTML = html;
+}
+
+function collectRoundTimings() {
+    const starts=document.querySelectorAll('.round-start'), ends=document.querySelectorAll('.round-end');
+    state.roundTimings=[];
+    for(let i=0;i<starts.length;i++) state.roundTimings.push({start:starts[i].value||`${String(8+i*2).padStart(2,'0')}:00`, end:ends[i].value||`${String(10+i*2).padStart(2,'0')}:00`});
+}
+
+// ================= DISTRIBUTION =================
+function fisherYates(arr) { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function findField(candidates) {
+    for(const c of candidates) {
+        if(state.headers.includes(c)) return c;
+        const lc=c.toLowerCase().replace(/[\s_-]/g,'');
+        const f=state.headers.find(h => h.toLowerCase().replace(/[\s_-]/g,'')===lc);
+        if(f) return f;
+    }
+    return null;
+}
+
+function runDistribution() {
+    if(!state.examinees.length){showToast('No examinees loaded','error');return;}
+    collectRoundTimings();
+    state.examName = document.getElementById('examName').value||'Exam';
+    state.examOrganizer = document.getElementById('examOrganizer').value||'';
+    state.examYear = document.getElementById('examYear').value||2026;
+    state.examStartDate = document.getElementById('examStartDate').value;
+
+    if(!state.selectedCenters.length){showToast('Please add at least one center','error');return;}
+    if(!state.roundTimings.length){showToast('Please configure round timings','error');return;}
+
+    const doShuffle = document.getElementById('shuffleToggle').checked;
+    const doBalance = document.getElementById('loadBalanceToggle').checked;
+    const doConflict = document.getElementById('conflictToggle').checked;
+
+    let examinees = state.examinees.map((e,i)=>({...e,_origIdx:i}));
+    if(doShuffle) examinees = fisherYates(examinees);
+
+    const emirateField = findField(['Preferred Emirate','PreferredEmirate','preferred_emirate','Emirate']);
+
+    // Group examinees by preferred emirate
+    const emirateGroups = {};
+    examinees.forEach(ex => {
+        const pref = emirateField ? String(ex[emirateField]||'').trim() : '';
+        const key = pref || '__unassigned__';
+        if(!emirateGroups[key]) emirateGroups[key]=[];
+        emirateGroups[key].push(ex);
+    });
+
+    // Group centers by emirate
+    const centersByEmirate = {};
+    state.selectedCenters.forEach(center => {
+        const em = (center.emirate||'').trim();
+        if(!centersByEmirate[em]) centersByEmirate[em]=[];
+        center.labs.forEach(lab => {
+            centersByEmirate[em].push({center:center.name, centerLink:center.link, lab:lab.name, capacity:lab.capacity, contact:center.contact, address:center.address||'', emirate:em});
+        });
+    });
+
+    const allLabs = [];
+    state.selectedCenters.forEach(center => {
+        center.labs.forEach(lab => {
+            allLabs.push({center:center.name, centerLink:center.link, lab:lab.name, capacity:lab.capacity, contact:center.contact, address:center.address||'', emirate:center.emirate||''});
+        });
+    });
+    if(!allLabs.length){showToast('No labs configured','error');return;}
+
+    const rounds = state.roundTimings.length;
+    const assignments = [];
+    const summary = {};
+
+    // Distribute per emirate, then overflow to any center
+    const allExamineesToAssign = [];
+
+    Object.entries(emirateGroups).forEach(([emirateKey, exList]) => {
+        const pref = emirateKey === '__unassigned__' ? '' : emirateKey;
+        const labs = centersByEmirate[pref] || [];
+        if(labs.length === 0) {
+            // No matching center — these will go to overflow
+            exList.forEach(ex => allExamineesToAssign.push({...ex, _preferredEmirate: pref, _overflow: true}));
+        } else {
+            const capPerRound = labs.reduce((s,l)=>s+l.capacity,0);
+            const dailyCap = rounds * capPerRound;
+            const daysNeeded = Math.ceil(exList.length / dailyCap);
+            let idx = 0;
+
+            for(let d=1; d<=daysNeeded; d++) {
+                if(!summary[d]) summary[d]={};
+                for(let r=1; r<=rounds; r++) {
+                    if(!summary[d][r]) summary[d][r]=0;
+                    let examDate='';
+                    if(state.examStartDate){const dt=new Date(state.examStartDate);dt.setDate(dt.getDate()+(d-1));examDate=dt.toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'});}
+
+                    if(doBalance) {
+                        // Balanced load: fill labs to capacity, use minimum labs per round
+                        // Sort labs by capacity descending — prefer larger labs first
+                        const sortedLabs = [...labs].sort((a,b)=>b.capacity - a.capacity);
+                        const numLabs = sortedLabs.length;
+
+                        // Calculate minimum total lab-slots needed globally
+                        // A lab-slot = one lab used in one round
+                        const slotCaps = [];
+                        let cumCap = 0;
+                        while(cumCap < exList.length) {
+                            const li = slotCaps.length % numLabs;
+                            slotCaps.push(sortedLabs[li].capacity);
+                            cumCap += sortedLabs[li].capacity;
+                            if(slotCaps.length > 10000) break; // safety
+                        }
+                        const totalLabSlots = slotCaps.length;
+
+                        // Distribute examinees evenly across lab-slots, respecting capacity
+                        const slotFills = new Array(totalLabSlots).fill(0);
+                        const base = Math.floor(exList.length / totalLabSlots);
+                        const rem = exList.length % totalLabSlots;
+                        for(let i=0; i<totalLabSlots; i++) slotFills[i] = base + (i < rem ? 1 : 0);
+
+                        // Iteratively fix any over-capacity slots
+                        for(let iter=0; iter<20; iter++) {
+                            let excess = 0;
+                            const uncapped = [];
+                            for(let i=0; i<totalLabSlots; i++) {
+                                if(slotFills[i] > slotCaps[i]) {
+                                    excess += slotFills[i] - slotCaps[i];
+                                    slotFills[i] = slotCaps[i];
+                                } else if(slotFills[i] < slotCaps[i]) {
+                                    uncapped.push(i);
+                                }
+                            }
+                            if(excess === 0 || !uncapped.length) break;
+                            const perU = Math.floor(excess / uncapped.length);
+                            let extraU = excess % uncapped.length;
+                            for(const ui of uncapped) {
+                                slotFills[ui] += perU + (extraU > 0 ? 1 : 0);
+                                if(extraU > 0) extraU--;
+                            }
+                        }
+
+                        // Assign examinees for this round's lab-slots
+                        const roundLinear = (d-1)*rounds + (r-1);
+                        const startSlot = roundLinear * numLabs;
+                        let roundAssigned = 0;
+
+                        for(let li=0; li<numLabs; li++) {
+                            const globalSlot = startSlot + li;
+                            if(globalSlot >= totalLabSlots || idx >= exList.length) break;
+                            const lab = sortedLabs[li];
+                            const count = slotFills[globalSlot];
+                            for(let s=0; s<count; s++) {
+                                if(idx >= exList.length) break;
+                                assignments.push({...exList[idx], _day:d,_date:examDate,_round:r,
+                                    _time:`${state.roundTimings[r-1].start} - ${state.roundTimings[r-1].end}`,
+                                    _center:lab.center,_lab:lab.lab,_centerLink:lab.centerLink,
+                                    _seatNo:s+1,_contact:lab.contact,_address:lab.address,_emirate:lab.emirate});
+                                idx++; roundAssigned++;
+                            }
+                        }
+                        summary[d][r] += roundAssigned;
+                    } else {
+                        for(const lab of labs){
+                            for(let s=0;s<lab.capacity;s++){
+                                if(idx>=exList.length) break;
+                                assignments.push({...exList[idx], _day:d,_date:examDate,_round:r,
+                                    _time:`${state.roundTimings[r-1].start} - ${state.roundTimings[r-1].end}`,
+                                    _center:lab.center,_lab:lab.lab,_centerLink:lab.centerLink,
+                                    _seatNo:s+1,_contact:lab.contact,_address:lab.address,_emirate:lab.emirate});
+                                idx++; summary[d][r]++;
+                            }
+                            if(idx>=exList.length) break;
+                        }
+                    }
+                    if(idx>=exList.length) break;
+                }
+                if(idx>=exList.length) break;
+            }
+            // Remaining overflow
+            while(idx < exList.length) {
+                allExamineesToAssign.push({...exList[idx], _preferredEmirate: pref, _overflow: true});
+                idx++;
+            }
+        }
+    });
+
+    // Handle overflow examinees — assign to any center with space
+    if(allExamineesToAssign.length > 0) {
+        let idx = 0;
+        const totalCapPerRound = allLabs.reduce((s,l)=>s+l.capacity,0);
+        const dailyCap = rounds * totalCapPerRound;
+        // Find the max day already used
+        let maxDay = Object.keys(summary).length ? Math.max(...Object.keys(summary).map(Number)) : 0;
+
+        while(idx < allExamineesToAssign.length) {
+            // Try existing days first by checking remaining capacity
+            let placed = false;
+            for(let d=1; d<=maxDay && idx<allExamineesToAssign.length; d++) {
+                for(let r=1; r<=rounds && idx<allExamineesToAssign.length; r++) {
+                    const usedInSlot = assignments.filter(a=>a._day===d&&a._round===r).length;
+                    const slotCap = totalCapPerRound;
+                    if(usedInSlot < slotCap) {
+                        // Find labs with space in this slot
+                        for(const lab of allLabs) {
+                            const labUsed = assignments.filter(a=>a._day===d&&a._round===r&&a._center===lab.center&&a._lab===lab.lab).length;
+                            if(labUsed < lab.capacity && idx < allExamineesToAssign.length) {
+                                let examDate = '';
+                                if(state.examStartDate){const dt=new Date(state.examStartDate);dt.setDate(dt.getDate()+(d-1));examDate=dt.toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'});}
+                                const seatNo = labUsed + 1;
+                                assignments.push({...allExamineesToAssign[idx], _day:d,_date:examDate,_round:r,
+                                    _time:`${state.roundTimings[r-1].start} - ${state.roundTimings[r-1].end}`,
+                                    _center:lab.center,_lab:lab.lab,_centerLink:lab.centerLink,
+                                    _seatNo:seatNo,_contact:lab.contact,_address:lab.address,_emirate:lab.emirate});
+                                if(!summary[d]) summary[d]={};
+                                if(!summary[d][r]) summary[d][r]=0;
+                                summary[d][r]++;
+                                idx++; placed = true;
+                            }
+                        }
+                    }
+                }
+            }
+            // If still remaining, add extra days
+            if(idx < allExamineesToAssign.length) {
+                maxDay++;
+                if(!summary[maxDay]) summary[maxDay]={};
+                for(let r=1; r<=rounds && idx<allExamineesToAssign.length; r++) {
+                    if(!summary[maxDay][r]) summary[maxDay][r]=0;
+                    let examDate = '';
+                    if(state.examStartDate){const dt=new Date(state.examStartDate);dt.setDate(dt.getDate()+(maxDay-1));examDate=dt.toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'});}
+                    for(const lab of allLabs) {
+                        for(let s=0;s<lab.capacity;s++){
+                            if(idx>=allExamineesToAssign.length) break;
+                            assignments.push({...allExamineesToAssign[idx], _day:maxDay,_date:examDate,_round:r,
+                                _time:`${state.roundTimings[r-1].start} - ${state.roundTimings[r-1].end}`,
+                                _center:lab.center,_lab:lab.lab,_centerLink:lab.centerLink,
+                                _seatNo:s+1,_contact:lab.contact,_address:lab.address,_emirate:lab.emirate});
+                            summary[maxDay][r]++;
+                            idx++;
+                        }
+                        if(idx>=allExamineesToAssign.length) break;
+                    }
+                }
+            }
+        }
+    }
+
+    const daysNeeded = Object.keys(summary).length ? Math.max(...Object.keys(summary).map(Number)) : 1;
+    const capacityPerRound = allLabs.reduce((s,l)=>s+l.capacity,0);
+    const dailyCapacity = rounds * capacityPerRound;
+
+    state.distribution = {totalExaminees:examinees.length, totalLabs:allLabs.length, rounds, capacityPerRound, dailyCapacity, daysNeeded, summary, allLabs};
+    state.assignments = assignments;
+
+    // Conflict detection (based on Email)
+    state.conflicts = [];
+    if(doConflict){
+        const emailField = findField(['Email','email','E-mail','EMAIL','e-mail']);
+        if(emailField){
+            const rm={};
+            assignments.forEach((a,ai) => {
+                const emailVal = String(a[emailField]||'').trim().toLowerCase();
+                if(!emailVal) return;
+                const key = `${emailVal}_D${a._day}_R${a._round}`;
+                if(!rm[key]) rm[key]=[]; rm[key].push({idx:ai,...a});
+            });
+            Object.entries(rm).forEach(([key,arr])=>{ if(arr.length>1) state.conflicts.push({key,examinees:arr}); });
+        }
+    }
+
+    renderConflicts(); renderStats(); renderVisualGrid(); renderDistributionTable(); renderChart();
+    renderFullAssignmentTable(assignments); renderDnDSelectors();
+    document.getElementById('statsGrid').style.display='grid';
+    document.getElementById('resultSection').style.display='block';
+    showToast(`Distribution complete! ${examinees.length} examinees across ${daysNeeded} day(s)${doShuffle?' (shuffled)':''}`, 'success');
+
+    // Auto-save run
+    autoSaveRun();
+}
+
+// ================= CONFLICTS =================
+function renderConflicts() {
+    const c = document.getElementById('conflictsContainer');
+    if(!state.conflicts.length){c.style.display='none';return;}
+    c.style.display='block';
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name']), emf=findField(['Email','email','E-mail','EMAIL','e-mail']);
+    c.innerHTML = `<div class="conflict-alert"><i class="fas fa-exclamation-triangle"></i><div class="conflict-alert-content">
+        <div class="conflict-alert-title">${state.conflicts.length} Scheduling Conflict(s) Detected</div>
+        <div class="conflict-alert-text">These examinees share the same email and appear more than once in the same round — they cannot take two exams simultaneously.</div>
+        <div style="margin-top:10px;">${state.conflicts.map(cf=>{const f=cf.examinees[0];return `<div style="padding:6px 10px;background:rgba(239,68,68,0.08);border-radius:6px;margin-bottom:4px;font-size:13px;"><strong>${nf?esc(String(f[nf])):''}</strong> ${emf?'('+esc(String(f[emf]))+')':''} &mdash; Day ${f._day}, Round ${f._round}: assigned to ${cf.examinees.map(e=>`${e._center}/${e._lab}`).join(' & ')}</div>`;}).join('')}</div>
+    </div></div>`;
+}
+
+// ================= STATS =================
+function renderStats() {
+    const d=state.distribution;
+    const stats=[
+        {icon:'fa-users',bg:'primary',label:'Total Examinees',value:d.totalExaminees},
+        {icon:'fa-calendar-alt',bg:'success',label:'Days Needed',value:d.daysNeeded},
+        {icon:'fa-sync-alt',bg:'warning',label:'Rounds/Day',value:d.rounds},
+        {icon:'fa-door-open',bg:'info',label:'Total Labs',value:d.totalLabs},
+        {icon:'fa-chair',bg:'primary',label:'Capacity/Round',value:d.capacityPerRound},
+        {icon:'fa-chart-line',bg:'success',label:'Daily Capacity',value:d.dailyCapacity},
+        {icon:'fa-exclamation-triangle',bg:'danger',label:'Conflicts',value:state.conflicts.length}
+    ];
+    const bgM={primary:'var(--primary-bg)',success:'var(--success-bg)',warning:'var(--warning-bg)',info:'var(--info-bg)',danger:'var(--danger-bg)'};
+    const cM={primary:'var(--primary)',success:'var(--success)',warning:'var(--warning)',info:'var(--info)',danger:'var(--danger)'};
+    document.getElementById('statsGrid').innerHTML = stats.map(s=>`<div class="stat-card"><div class="stat-icon" style="background:${bgM[s.bg]};color:${cM[s.bg]}"><i class="fas ${s.icon}"></i></div><div class="stat-value">${s.value.toLocaleString()}</div><div class="stat-label">${s.label}</div></div>`).join('');
+}
+
+// ================= VISUAL GRID =================
+function renderVisualGrid() {
+    const d=state.distribution; let html='';
+    for(let day=1;day<=d.daysNeeded;day++){
+        let dayTotal=0, rh='';
+        for(let r=1;r<=d.rounds;r++){
+            const count=d.summary[day]?.[r]||0; dayTotal+=count;
+            const pct=Math.min(100, Math.round((count/d.capacityPerRound)*100));
+            rh+=`<div class="round-block"><div class="round-block-header"><span>Round ${r} (${state.roundTimings[r-1]?.start||''} - ${state.roundTimings[r-1]?.end||''})</span><span>${count} examinees</span></div><div class="capacity-bar"><div class="capacity-fill" style="width:${pct}%"></div></div></div>`;
+        }
+        let dl=''; if(state.examStartDate){const dt=new Date(state.examStartDate);dt.setDate(dt.getDate()+(day-1));dl=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
+        html+=`<div class="day-card"><div class="day-card-header"><span><i class="fas fa-calendar-day"></i> Day ${day} ${dl?'&mdash; '+dl:''}</span><span>${dayTotal} total</span></div><div class="day-card-body">${rh}</div></div>`;
+    }
+    document.getElementById('visualGrid').innerHTML=html;
+}
+
+// ================= SUMMARY TABLE =================
+function renderDistributionTable() {
+    const d=state.distribution;
+    let html='<table class="data-table"><thead><tr><th>Day</th>';
+    for(let r=1;r<=d.rounds;r++) html+=`<th>Round ${r}</th>`;
+    html+='<th>Total</th></tr></thead><tbody>';
+    let gt=0;
+    for(let day=1;day<=d.daysNeeded;day++){
+        html+=`<tr><td><span class="badge badge-primary">Day ${day}</span></td>`;
+        let dt=0;
+        for(let r=1;r<=d.rounds;r++){const c=d.summary[day]?.[r]||0;dt+=c;html+=`<td>${c}</td>`;}
+        gt+=dt; html+=`<td><strong>${dt}</strong></td></tr>`;
+    }
+    html+=`<tr style="background:var(--bg-accent);font-weight:700;"><td>Total</td>`;
+    for(let r=1;r<=d.rounds;r++){let cs=0;for(let day=1;day<=d.daysNeeded;day++)cs+=d.summary[day]?.[r]||0;html+=`<td>${cs}</td>`;}
+    html+=`<td>${gt}</td></tr></tbody></table>`;
+    document.getElementById('distributionTable').innerHTML=html;
+}
+
+// ================= CHART =================
+function renderChart() {
+    const d=state.distribution, labels=[], datasets=[];
+    const colors=['#4f46e5','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6'];
+    for(let day=1;day<=d.daysNeeded;day++) labels.push(`Day ${day}`);
+    for(let r=1;r<=d.rounds;r++){
+        const data=[];
+        for(let day=1;day<=d.daysNeeded;day++) data.push(d.summary[day]?.[r]||0);
+        datasets.push({label:`Round ${r}`,data,backgroundColor:colors[(r-1)%colors.length]+'88',borderColor:colors[(r-1)%colors.length],borderWidth:2,borderRadius:6});
+    }
+    if(distributionChart) distributionChart.destroy();
+    distributionChart = new Chart(document.getElementById('distributionChart').getContext('2d'),{
+        type:'bar',data:{labels,datasets},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},title:{display:true,text:'Distribution by Day & Round',font:{size:16,weight:'bold'}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'}}}}
+    });
+}
+
+// ================= FULL ASSIGNMENT TABLE =================
+function renderFullAssignmentTable(data) {
+    if(!data||!data.length) return;
+    const cols=['_day','_date','_round','_time','_center','_lab','_seatNo','_emirate'];
+    const labels={_day:'Day',_date:'Date',_round:'Round',_time:'Time',_center:'Center',_lab:'Lab',_seatNo:'Seat',_emirate:'Emirate'};
+    let html='<table class="data-table" id="fullTable"><thead><tr><th>#</th>';
+    state.headers.forEach(h=>html+=`<th>${esc(h)}</th>`);
+    cols.forEach(c=>html+=`<th>${labels[c]}</th>`);
+    html+='</tr></thead><tbody>';
+    data.forEach((row,i) => {
+        html+=`<tr><td>${i+1}</td>`;
+        state.headers.forEach(h=>html+=`<td>${esc(String(row[h]??''))}</td>`);
+        cols.forEach(c=>{
+            const v=row[c]??'';
+            if(c==='_day') html+=`<td><span class="badge badge-primary">Day ${v}</span></td>`;
+            else if(c==='_round') html+=`<td><span class="badge badge-warning">R${v}</span></td>`;
+            else if(c==='_center') html+=`<td><strong>${esc(String(v))}</strong></td>`;
+            else if(c==='_emirate') html+=`<td><span class="badge badge-success">${esc(String(v))}</span></td>`;
+            else html+=`<td>${esc(String(v))}</td>`;
+        });
+        html+='</tr>';
+    });
+    html+='</tbody></table>';
+    document.getElementById('fullAssignmentTable').innerHTML=html;
+}
+
+// ================= LOOKUP =================
+function lookupExaminee(query) {
+    const c=document.getElementById('lookupResults');
+    if(!query||query.length<2||!state.assignments.length){c.style.display='none';return;}
+    const q=query.toLowerCase();
+    const res=state.assignments.filter(a=>Object.values(a).some(v=>String(v).toLowerCase().includes(q))).slice(0,50);
+    if(!res.length){c.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><p>No matching examinees</p></div>';c.style.display='block';return;}
+    const cols=['_day','_date','_round','_time','_center','_lab','_seatNo'];
+    const labels={_day:'Day',_date:'Date',_round:'Round',_time:'Time',_center:'Center',_lab:'Lab',_seatNo:'Seat'};
+    let html='<table class="data-table"><thead><tr>';
+    state.headers.forEach(h=>html+=`<th>${esc(h)}</th>`);
+    cols.forEach(c=>html+=`<th>${labels[c]}</th>`);
+    html+='</tr></thead><tbody>';
+    res.forEach(row=>{html+='<tr>';state.headers.forEach(h=>html+=`<td>${esc(String(row[h]??''))}</td>`);cols.forEach(c=>html+=`<td>${esc(String(row[c]??''))}</td>`);html+='</tr>';});
+    html+='</tbody></table>';
+    c.innerHTML=html;c.style.display='block';
+}
+
+function filterFullTable(query) {
+    const t=document.getElementById('fullTable');if(!t) return;
+    const q=query.toLowerCase();
+    t.querySelectorAll('tbody tr').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none');
+}
+
+// ================= DRAG & DROP =================
+function renderDnDSelectors() {
+    const d=state.distribution;
+    const ds=document.getElementById('dndDaySelect'), rs=document.getElementById('dndRoundSelect');
+    ds.innerHTML=''; rs.innerHTML='';
+    for(let i=1;i<=d.daysNeeded;i++) ds.innerHTML+=`<option value="${i}">Day ${i}</option>`;
+    for(let i=1;i<=d.rounds;i++) rs.innerHTML+=`<option value="${i}">Round ${i}</option>`;
+    renderDnD();
+}
+
+function renderDnD() {
+    const day=parseInt(document.getElementById('dndDaySelect').value)||1;
+    const round=parseInt(document.getElementById('dndRoundSelect').value)||1;
+    const c=document.getElementById('dndContainer');
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+
+    const roundAssignments=state.assignments.filter(a=>a._day===day&&a._round===round);
+    const labGroups={};
+    state.selectedCenters.forEach(ct=>{ct.labs.forEach(l=>{const key=`${ct.name}|${l.name}`;labGroups[key]={center:ct.name,lab:l.name,capacity:l.capacity,items:[]};});});
+    roundAssignments.forEach(a=>{const key=`${a._center}|${a._lab}`;if(labGroups[key])labGroups[key].items.push(a);});
+
+    c.innerHTML=Object.entries(labGroups).map(([key,grp])=>`
+        <div class="dnd-lab" data-lab-key="${key}">
+            <div class="dnd-lab-header"><span>${esc(grp.center)} &mdash; ${esc(grp.lab)}</span><span class="badge ${grp.items.length>grp.capacity?'badge-danger':'badge-info'}">${grp.items.length}/${grp.capacity}</span></div>
+            <div class="dnd-lab-body" data-lab-key="${key}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'${key}',${day},${round})">
+                ${grp.items.map(item=>{const gi=state.assignments.indexOf(item);return `<div class="dnd-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${gi}');this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><span class="dnd-item-name">${esc(String(item[nf]||''))}</span><span class="dnd-item-id">${idf?esc(String(item[idf]||'')):''} &middot; Seat ${item._seatNo}</span></div>`;}).join('')}
+                ${grp.items.length===0?'<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Drop examinees here</div>':''}
+            </div>
+        </div>`).join('');
+}
+
+function handleDrop(event, targetLabKey, day, round) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    const gi=parseInt(event.dataTransfer.getData('text/plain'));
+    if(isNaN(gi)) return;
+    const a=state.assignments[gi];
+    if(!a||a._day!==day||a._round!==round) return;
+    const [center,lab]=targetLabKey.split('|');
+    a._center=center; a._lab=lab;
+    const labA=state.assignments.filter(x=>x._day===day&&x._round===round&&x._center===center&&x._lab===lab);
+    labA.forEach((x,i)=>x._seatNo=i+1);
+    renderDnD();
+    renderFullAssignmentTable(state.assignments);
+    showToast('Examinee moved successfully','success');
+}
+
+// ================= TABS =================
+function switchTab(btn,id) {
+    btn.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// ================= EXPORT EXCEL PER DAY =================
+function exportToExcel() {
+    if(!state.assignments.length){showToast('Run distribution first','warning');return;}
+    const d=state.distribution;
+    for(let day=1;day<=d.daysNeeded;day++){
+        const wb=XLSX.utils.book_new();
+        for(let r=1;r<=d.rounds;r++){
+            const rd=state.assignments.filter(a=>a._day===day&&a._round===r);
+            if(!rd.length) continue;
+            const exp=rd.map(a=>{const row={};state.headers.forEach(h=>row[h]=a[h]);row['Center']=a._center;row['Lab']=a._lab;row['Day']=a._day;row['Date']=a._date;row['Time']=a._time;row['Round']=a._round;row['Emirate']=a._emirate;row['Maps Link']=a._centerLink;return row;});
+            const ws=XLSX.utils.json_to_sheet(exp);
+            ws['!cols']=Object.keys(exp[0]).map(k=>({wch:Math.max(k.length,...exp.slice(0,100).map(r=>String(r[k]||'').length))+2}));
+            XLSX.utils.book_append_sheet(wb,ws,`Round_${r}`);
+        }
+        XLSX.writeFile(wb,`Day_${day}_Distribution.xlsx`);
+    }
+    showToast(`${d.daysNeeded} Excel file(s) exported!`,'success');
+}
+
+// ================= EXPORT FULL EXCEL =================
+function exportFullExcel() {
+    if(!state.assignments.length){showToast('Run distribution first','warning');return;}
+    const wb=XLSX.utils.book_new(), d=state.distribution;
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{Key:'Exam',Value:state.examName},{Key:'Examinees',Value:d.totalExaminees},{Key:'Days',Value:d.daysNeeded},{Key:'Rounds/Day',Value:d.rounds},{Key:'Labs',Value:d.totalLabs},{Key:'Capacity/Round',Value:d.capacityPerRound}]),'Summary');
+    const exp=state.assignments.map(a=>{const row={};state.headers.forEach(h=>row[h]=a[h]);row['Day']=a._day;row['Date']=a._date;row['Round']=a._round;row['Time']=a._time;row['Center']=a._center;row['Lab']=a._lab;row['Emirate']=a._emirate;row['Maps Link']=a._centerLink;return row;});
+    const ws=XLSX.utils.json_to_sheet(exp);
+    ws['!cols']=Object.keys(exp[0]).map(k=>({wch:Math.max(k.length,...exp.slice(0,100).map(r=>String(r[k]||'').length))+2}));
+    XLSX.utils.book_append_sheet(wb,ws,'All_Assignments');
+    XLSX.writeFile(wb,'Full_Exam_Distribution.xlsx');
+    showToast('Full Excel exported!','success');
+}
+
+// ================= PDF REPORT =================
+function exportToPDF() {
+    if(!state.assignments.length){showToast('Run distribution first','warning');return;}
+    const d=state.distribution, div=document.createElement('div');
+    div.style.cssText='padding:40px;font-family:Inter,sans-serif;color:#1a1d23;';
+    div.innerHTML=`
+        <h1 style="text-align:center;color:#4f46e5;margin-bottom:4px;">${esc(state.examName)} &mdash; Distribution Report</h1>
+        <p style="text-align:center;color:#6b7280;margin-bottom:6px;">${esc(state.examOrganizer)}</p>
+        <p style="text-align:center;color:#6b7280;margin-bottom:30px;">Generated on ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:30px;">
+            <div style="background:#f0f2f5;padding:16px;border-radius:8px;text-align:center;"><div style="font-size:24px;font-weight:800;color:#4f46e5;">${d.totalExaminees}</div><div style="font-size:12px;color:#6b7280;">Total Examinees</div></div>
+            <div style="background:#f0f2f5;padding:16px;border-radius:8px;text-align:center;"><div style="font-size:24px;font-weight:800;color:#10b981;">${d.daysNeeded}</div><div style="font-size:12px;color:#6b7280;">Days Needed</div></div>
+            <div style="background:#f0f2f5;padding:16px;border-radius:8px;text-align:center;"><div style="font-size:24px;font-weight:800;color:#f59e0b;">${d.rounds}</div><div style="font-size:12px;color:#6b7280;">Rounds/Day</div></div>
+        </div>
+        <h3 style="margin-bottom:10px;">Distribution Summary</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:30px;">
+            <thead><tr style="background:#4f46e5;color:white;"><th style="padding:10px;text-align:left;">Day</th>${Array.from({length:d.rounds},(_,i)=>`<th style="padding:10px;">Round ${i+1}</th>`).join('')}<th style="padding:10px;">Total</th></tr></thead>
+            <tbody>${Object.entries(d.summary).map(([day,rounds])=>{const total=Object.values(rounds).reduce((a,b)=>a+b,0);return `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px;font-weight:600;">Day ${day}</td>${Object.values(rounds).map(c=>`<td style="padding:10px;text-align:center;">${c}</td>`).join('')}<td style="padding:10px;text-align:center;font-weight:700;">${total}</td></tr>`;}).join('')}</tbody>
+        </table>
+        <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:40px;">Created by Eng. Firas Kiftaro &mdash; Assessment Management System v4.0 &copy; ${new Date().getFullYear()}</p>`;
+    html2pdf().set({margin:10,filename:'Exam_Distribution_Report.pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(div).save();
+    showToast('PDF report exported!','success');
+}
+
+// ================= ATTENDANCE TRACKING =================
+function openAttendanceModal() {
+    if(!state.assignments.length){showToast('Run distribution first to track attendance','warning');return;}
+    const modal = document.getElementById('attendanceModal');
+    modal.style.display='flex';
+    // Populate center dropdown
+    const centers=[...new Set(state.assignments.map(a=>a._center))];
+    const sel=document.getElementById('attCenterSelect');
+    sel.innerHTML='<option value="">-- Select Center --</option>'+centers.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    document.getElementById('attDayFilter').innerHTML='<option value="">All Days</option>';
+    document.getElementById('attRoundFilter').innerHTML='<option value="">All Rounds</option>';
+    document.getElementById('attendanceListContainer').innerHTML='<div class="empty-state"><i class="fas fa-building"></i><p>Select a center to view its examinees</p></div>';
+    document.getElementById('attSummary').innerHTML='';
+    document.getElementById('attSearch').value='';
+}
+function closeAttendanceModal() { document.getElementById('attendanceModal').style.display='none'; }
+
+function getFilteredAttendees() {
+    const center = document.getElementById('attCenterSelect').value;
+    if(!center) return [];
+    let list = state.assignments.filter(a=>a._center===center);
+    const dayF = document.getElementById('attDayFilter').value;
+    const roundF = document.getElementById('attRoundFilter').value;
+    const search = document.getElementById('attSearch').value.trim().toLowerCase();
+    if(dayF) list = list.filter(a=>String(a._day)===dayF);
+    if(roundF) list = list.filter(a=>String(a._round)===roundF);
+    if(search) {
+        const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+        const idf=findField(['Employee ID','EmployeeID','ID']);
+        list = list.filter(a => {
+            const name = String(a[nf]||'').toLowerCase();
+            const id = idf ? String(a[idf]||'').toLowerCase() : '';
+            return name.includes(search) || id.includes(search);
+        });
+    }
+    return list;
+}
+
+function renderAttendanceList() {
+    const center = document.getElementById('attCenterSelect').value;
+    const container = document.getElementById('attendanceListContainer');
+    const summaryEl = document.getElementById('attSummary');
+    if(!center) {
+        container.innerHTML='<div class="empty-state"><i class="fas fa-building"></i><p>Select a center to view its examinees</p></div>';
+        summaryEl.innerHTML='';
+        return;
+    }
+    // Populate day/round filters based on center data
+    const centerAssignments = state.assignments.filter(a=>a._center===center);
+    const days = [...new Set(centerAssignments.map(a=>a._day))].sort((a,b)=>a-b);
+    const rounds = [...new Set(centerAssignments.map(a=>a._round))].sort((a,b)=>a-b);
+    const daySel = document.getElementById('attDayFilter');
+    const roundSel = document.getElementById('attRoundFilter');
+    const curDay = daySel.value, curRound = roundSel.value;
+    daySel.innerHTML='<option value="">All Days</option>'+days.map(d=>`<option value="${d}" ${String(d)===curDay?'selected':''}>Day ${d}</option>`).join('');
+    roundSel.innerHTML='<option value="">All Rounds</option>'+rounds.map(r=>`<option value="${r}" ${String(r)===curRound?'selected':''}>Round ${r}</option>`).join('');
+
+    const list = getFilteredAttendees();
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+
+    // Summary
+    const totalCenter = centerAssignments.length;
+    const present = centerAssignments.filter(a=>a._attended===true).length;
+    const absent = centerAssignments.filter(a=>a._attended===false).length;
+    const unmarked = totalCenter - present - absent;
+    summaryEl.innerHTML=`
+        <div style="background:var(--success-bg);padding:8px 14px;border-radius:8px;text-align:center;flex:1;"><div style="font-size:18px;font-weight:800;color:var(--success);">${present}</div><div style="font-size:11px;color:var(--text-muted);">Present</div></div>
+        <div style="background:var(--danger-bg);padding:8px 14px;border-radius:8px;text-align:center;flex:1;"><div style="font-size:18px;font-weight:800;color:var(--danger);">${absent}</div><div style="font-size:11px;color:var(--text-muted);">Absent</div></div>
+        <div style="background:var(--warning-bg);padding:8px 14px;border-radius:8px;text-align:center;flex:1;"><div style="font-size:18px;font-weight:800;color:var(--warning);">${unmarked}</div><div style="font-size:11px;color:var(--text-muted);">Unmarked</div></div>
+        <div style="background:var(--info-bg);padding:8px 14px;border-radius:8px;text-align:center;flex:1;"><div style="font-size:18px;font-weight:800;color:var(--info);">${totalCenter}</div><div style="font-size:11px;color:var(--text-muted);">Total</div></div>
+    `;
+
+    if(!list.length) { container.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><p>No examinees match the current filters</p></div>'; return; }
+
+    container.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--bg-accent);position:sticky;top:0;">
+            <th style="padding:8px;text-align:left;border-bottom:2px solid var(--border-color);">#</th>
+            <th style="padding:8px;text-align:left;border-bottom:2px solid var(--border-color);">Name</th>
+            ${idf?'<th style="padding:8px;text-align:left;border-bottom:2px solid var(--border-color);">ID</th>':''}
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border-color);">Day</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border-color);">Round</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border-color);">Lab</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border-color);">Seat</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border-color);min-width:180px;">Attendance</th>
+        </tr></thead>
+        <tbody>${list.map((a,i)=>{
+            const idx = state.assignments.indexOf(a);
+            const status = a._attended===true ? 'present' : a._attended===false ? 'absent' : 'unmarked';
+            return `<tr style="border-bottom:1px solid var(--border-light);${status==='present'?'background:var(--success-bg);':status==='absent'?'background:var(--danger-bg);':''}">
+                <td style="padding:6px 8px;">${i+1}</td>
+                <td style="padding:6px 8px;font-weight:500;">${esc(String(a[nf]||''))}</td>
+                ${idf?`<td style="padding:6px 8px;">${esc(String(a[idf]||''))}</td>`:''}
+                <td style="padding:6px 8px;text-align:center;">Day ${a._day}</td>
+                <td style="padding:6px 8px;text-align:center;">R${a._round}</td>
+                <td style="padding:6px 8px;text-align:center;">${esc(a._lab)}</td>
+                <td style="padding:6px 8px;text-align:center;">${a._seatNo}</td>
+                <td style="padding:6px 8px;text-align:center;">
+                    <div style="display:flex;gap:4px;justify-content:center;">
+                        <button class="btn btn-sm ${status==='present'?'btn-success':'btn-outline'}" style="padding:4px 10px;font-size:11px;" onclick="setAttendance(${idx},true)"><i class="fas fa-check"></i> Present</button>
+                        <button class="btn btn-sm ${status==='absent'?'btn-danger':'btn-outline'}" style="padding:4px 10px;font-size:11px;" onclick="setAttendance(${idx},false)"><i class="fas fa-times"></i> Absent</button>
+                    </div>
+                </td>
+            </tr>`;}).join('')}</tbody>
+    </table>`;
+}
+
+function setAttendance(assignmentIndex, attended) {
+    state.assignments[assignmentIndex]._attended = attended;
+    renderAttendanceList();
+}
+
+function markAllAttendance(attended) {
+    const list = getFilteredAttendees();
+    list.forEach(a => { a._attended = attended; });
+    renderAttendanceList();
+    showToast(`Marked ${list.length} examinees as ${attended?'Present':'Absent'}`,'success');
+}
+
+function clearAllAttendance() {
+    const list = getFilteredAttendees();
+    list.forEach(a => { delete a._attended; });
+    renderAttendanceList();
+    showToast(`Cleared attendance for ${list.length} examinees`,'info');
+}
+
+// ================= PER-CENTER COMPREHENSIVE PDF =================
+function renderPerCenterButtons() {
+    const c=document.getElementById('perCenterBtns');
+    const ex=document.getElementById('perCenterExcelBtns');
+    if(!state.assignments.length){c.innerHTML='<span style="color:var(--text-muted);font-size:13px;">Run distribution first</span>';ex.style.display='none';ex.innerHTML='';return;}
+    const centers=[...new Set(state.assignments.map(a=>a._center))];
+    c.innerHTML='<span style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-right:8px;"><i class="fas fa-file-pdf" style="color:var(--danger);"></i> PDF:</span>'+centers.map(cn=>`<button class="btn btn-sm" style="background:var(--info);color:white;" onclick="genCenterReport('${cn.replace(/'/g,"\\'")}')"><i class="fas fa-file-pdf"></i> ${esc(cn)}</button>`).join('');
+    ex.style.display='flex';
+    ex.innerHTML='<span style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-right:8px;"><i class="fas fa-file-excel" style="color:var(--success);"></i> Excel:</span>'+centers.map(cn=>`<button class="btn btn-sm" style="background:var(--success);color:white;" onclick="exportCenterAttendanceExcel('${cn.replace(/'/g,"\\'")}')"><i class="fas fa-file-excel"></i> ${esc(cn)}</button>`).join('');
+}
+
+function genCenterReport(centerName) {
+    const ca=state.assignments.filter(a=>a._center===centerName);
+    if(!ca.length){showToast('No assignments for this center','warning');return;}
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+    const emf=findField(['Preferred Emirate','Emirate']);
+    const exf=findField(['Exam Name','ExamName','Exam']);
+    const sf=findField(['Sector','sector']);
+    const contact=ca[0]._contact||'';
+    const address=ca[0]._address||'';
+    const emirate=ca[0]._emirate||'';
+
+    const days = [...new Set(ca.map(a=>a._day))].sort((a,b)=>a-b);
+    const rounds = state.roundTimings.length;
+    const labs = [...new Set(ca.map(a=>a._lab))];
+    const totalCapacity = state.selectedCenters.filter(c=>c.name===centerName).reduce((s,c)=>s+c.labs.reduce((ss,l)=>ss+l.capacity,0),0);
+
+    const sectorCounts = {};
+    if(sf) ca.forEach(a => { const s=String(a[sf]||'Other'); sectorCounts[s]=(sectorCounts[s]||0)+1; });
+    const examCounts = {};
+    if(exf) ca.forEach(a => { const e=String(a[exf]||'Other'); examCounts[e]=(examCounts[e]||0)+1; });
+
+    const attPresent = ca.filter(a=>a._attended===true).length;
+    const attAbsent = ca.filter(a=>a._attended===false).length;
+    const attUnmarked = ca.length - attPresent - attAbsent;
+    const hasAttendanceData = attPresent > 0 || attAbsent > 0;
+
+    const centerSummary = {};
+    days.forEach(d => { centerSummary[d]={}; for(let r=1;r<=rounds;r++){ centerSummary[d][r]=ca.filter(a=>a._day===d&&a._round===r).length; }});
+
+    const dayBreakdownHtml = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">
+        <thead><tr style="background:#4f46e5;color:white;"><th style="padding:6px 8px;text-align:left;">Day</th>${Array.from({length:rounds},(_,i)=>`<th style="padding:6px 8px;text-align:center;">Round ${i+1}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">Total</th></tr></thead>
+        <tbody>${days.map(d=>{const rt=Object.values(centerSummary[d]).reduce((a,b)=>a+b,0); return `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:5px 8px;font-weight:600;">Day ${d}</td>${Array.from({length:rounds},(_,r)=>`<td style="padding:5px 8px;text-align:center;">${centerSummary[d][r+1]||0}</td>`).join('')}<td style="padding:5px 8px;text-align:center;font-weight:700;">${rt}</td></tr>`;}).join('')}</tbody>
+    </table>`;
+
+    const labUtilHtml = labs.map(l=>{
+        const labAssigned = ca.filter(a=>a._lab===l).length;
+        const labCap = state.selectedCenters.filter(c=>c.name===centerName).reduce((s,c)=>{const lb=c.labs.find(x=>x.name===l);return s+(lb?lb.capacity:0);},0);
+        const totalSlots = days.length * rounds * labCap;
+        const utilPct = totalSlots > 0 ? Math.round(labAssigned/totalSlots*100) : 0;
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="min-width:80px;font-weight:600;font-size:10px;">${esc(l)}</span><div style="flex:1;height:12px;background:#e5e7eb;border-radius:6px;overflow:hidden;"><div style="height:100%;background:linear-gradient(90deg,#10b981,#4f46e5);width:${utilPct}%;border-radius:6px;"></div></div><span style="font-size:10px;font-weight:600;min-width:35px;text-align:right;">${utilPct}%</span></div>`;
+    }).join('');
+
+    const sectorHtml = Object.entries(sectorCounts).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px;border-bottom:1px solid #f0f0f0;"><span>${esc(k)}</span><strong>${v}</strong></div>`).join('');
+    const examHtml = Object.entries(examCounts).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px;border-bottom:1px solid #f0f0f0;"><span>${esc(k)}</span><strong>${v}</strong></div>`).join('');
+
+    // Determine dynamic columns
+    const showSector = !!sf;
+    const showExam = !!exf;
+    const showId = !!idf;
+    // Compute column count: # + Name + Day + Round + Time + Lab + Seat + Status = 8 base, plus optional ID/Sector/Exam
+    const optCols = (showId?1:0)+(showSector?1:0)+(showExam?1:0);
+    const fontSize = optCols>=2 ? '8px' : optCols===1 ? '9px' : '9px';
+    const cellPad = optCols>=2 ? '3px 4px' : '4px 5px';
+
+    // Build examinee rows sorted by day, round, lab, seat
+    const sorted = [...ca].sort((a,b)=>a._day-b._day||a._round-b._round||a._lab.localeCompare(b._lab)||a._seatNo-b._seatNo);
+
+    const examineeTblHtml = `<table style="width:100%;border-collapse:collapse;font-size:${fontSize};">
+        <thead><tr style="background:#4f46e5;color:white;">
+            <th style="padding:${cellPad};text-align:center;">#</th>
+            <th style="padding:${cellPad};text-align:left;">Name</th>
+            ${showId?`<th style="padding:${cellPad};text-align:left;">Employee ID</th>`:''}
+            ${showSector?`<th style="padding:${cellPad};text-align:left;">Sector</th>`:''}
+            ${showExam?`<th style="padding:${cellPad};text-align:left;">Exam</th>`:''}
+            <th style="padding:${cellPad};text-align:center;">Day</th>
+            <th style="padding:${cellPad};text-align:center;">Round</th>
+            <th style="padding:${cellPad};text-align:center;">Time</th>
+            <th style="padding:${cellPad};text-align:center;">Lab</th>
+            <th style="padding:${cellPad};text-align:center;">Seat</th>
+            <th style="padding:${cellPad};text-align:center;">Status</th>
+        </tr></thead>
+        <tbody>${sorted.map((a,i)=>{
+            const attStatus = a._attended===true?'Present':a._attended===false?'Absent':'—';
+            const attStyle = a._attended===true?'color:#10b981;font-weight:700;':a._attended===false?'color:#ef4444;font-weight:700;':'color:#b0b0b0;';
+            const rowBg = a._attended===false?'background:#fef2f2;': i%2!==0?'background:#f9fafb;':'';
+            return `<tr style="border-bottom:1px solid #e5e7eb;${rowBg}">
+                <td style="padding:${cellPad};text-align:center;">${i+1}</td>
+                <td style="padding:${cellPad};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${esc(String(a[nf]||''))}</td>
+                ${showId?`<td style="padding:${cellPad};">${esc(String(a[idf]||''))}</td>`:''}
+                ${showSector?`<td style="padding:${cellPad};">${esc(String(a[sf]||''))}</td>`:''}
+                ${showExam?`<td style="padding:${cellPad};">${esc(String(a[exf]||''))}</td>`:''}
+                <td style="padding:${cellPad};text-align:center;">Day ${a._day}</td>
+                <td style="padding:${cellPad};text-align:center;">R${a._round}</td>
+                <td style="padding:${cellPad};text-align:center;white-space:nowrap;">${a._time}</td>
+                <td style="padding:${cellPad};text-align:center;">${esc(a._lab)}</td>
+                <td style="padding:${cellPad};text-align:center;">${a._seatNo}</td>
+                <td style="padding:${cellPad};text-align:center;${attStyle}">${attStatus}</td>
+            </tr>`;}).join('')}</tbody>
+    </table>`;
+
+    // Attendance per-day breakdown
+    let attPerDayHtml = '';
+    if(hasAttendanceData) {
+        attPerDayHtml = `<h3 style="margin-bottom:6px;font-size:12px;margin-top:16px;">Attendance by Day</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">
+            <thead><tr style="background:#10b981;color:white;"><th style="padding:6px 8px;text-align:left;">Day</th><th style="padding:6px 8px;text-align:center;">Total</th><th style="padding:6px 8px;text-align:center;">Present</th><th style="padding:6px 8px;text-align:center;">Absent</th><th style="padding:6px 8px;text-align:center;">Unmarked</th><th style="padding:6px 8px;text-align:center;">Attendance %</th></tr></thead>
+            <tbody>${days.map(d=>{
+                const dayAll=ca.filter(a=>a._day===d);
+                const dP=dayAll.filter(a=>a._attended===true).length;
+                const dA=dayAll.filter(a=>a._attended===false).length;
+                const dU=dayAll.length-dP-dA;
+                const pct=(dP+dA)>0?Math.round(dP/(dP+dA)*100):0;
+                return `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:5px 8px;font-weight:600;">Day ${d}</td><td style="padding:5px 8px;text-align:center;">${dayAll.length}</td><td style="padding:5px 8px;text-align:center;color:#10b981;font-weight:600;">${dP}</td><td style="padding:5px 8px;text-align:center;color:#ef4444;font-weight:600;">${dA}</td><td style="padding:5px 8px;text-align:center;color:#f59e0b;">${dU}</td><td style="padding:5px 8px;text-align:center;font-weight:700;">${pct}%</td></tr>`;
+            }).join('')}</tbody>
+        </table>`;
+    }
+
+    const div=document.createElement('div');
+    div.style.cssText='padding:20px 24px;font-family:Inter,sans-serif;color:#1a1d23;';
+    div.innerHTML=`
+        <div style="text-align:center;margin-bottom:20px;">
+            <h1 style="color:#4f46e5;margin:0 0 2px 0;font-size:20px;">${esc(state.examName)}</h1>
+            <h2 style="color:#1a1d23;margin:0 0 6px 0;font-size:16px;">Center Report: ${esc(centerName)}</h2>
+            <div style="font-size:11px;color:#6b7280;line-height:1.6;">
+                ${contact?`Director: ${esc(contact)} &nbsp;|&nbsp;`:''}
+                ${emirate?`Emirate: ${esc(emirate)} &nbsp;|&nbsp;`:''}
+                ${address?`Address: ${esc(address)} &nbsp;|&nbsp;`:''}
+                Generated on ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+            <div style="background:#f0f2f5;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#4f46e5;">${ca.length}</div><div style="font-size:10px;color:#6b7280;">Total Examinees</div></div>
+            <div style="background:#f0f2f5;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#10b981;">${days.length}</div><div style="font-size:10px;color:#6b7280;">Active Days</div></div>
+            <div style="background:#f0f2f5;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#f59e0b;">${labs.length}</div><div style="font-size:10px;color:#6b7280;">Labs Used</div></div>
+            <div style="background:#f0f2f5;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#3b82f6;">${totalCapacity}</div><div style="font-size:10px;color:#6b7280;">Capacity/Round</div></div>
+        </div>
+
+        ${hasAttendanceData ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+            <div style="background:#ecfdf5;padding:10px;border-radius:8px;text-align:center;border:1px solid #a7f3d0;"><div style="font-size:20px;font-weight:800;color:#10b981;">${attPresent}</div><div style="font-size:10px;color:#6b7280;">Present (${ca.length>0?Math.round(attPresent/ca.length*100):0}%)</div></div>
+            <div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center;border:1px solid #fecaca;"><div style="font-size:20px;font-weight:800;color:#ef4444;">${attAbsent}</div><div style="font-size:10px;color:#6b7280;">Absent (${ca.length>0?Math.round(attAbsent/ca.length*100):0}%)</div></div>
+            <div style="background:#fffbeb;padding:10px;border-radius:8px;text-align:center;border:1px solid #fde68a;"><div style="font-size:20px;font-weight:800;color:#f59e0b;">${attUnmarked}</div><div style="font-size:10px;color:#6b7280;">Unmarked</div></div>
+        </div>` : ''}
+
+        <div style="display:grid;grid-template-columns:${hasAttendanceData?'1fr':'1fr 1fr'};gap:16px;margin-bottom:16px;">
+            <div>
+                <h3 style="margin-bottom:6px;font-size:12px;">Daily Distribution</h3>
+                ${dayBreakdownHtml}
+            </div>
+            ${!hasAttendanceData ? `<div>
+                <h3 style="margin-bottom:6px;font-size:12px;">Lab Utilization</h3>
+                ${labUtilHtml}
+            </div>`:''}
+        </div>
+
+        ${hasAttendanceData ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div>${attPerDayHtml}</div>
+            <div>
+                <h3 style="margin-bottom:6px;font-size:12px;margin-top:16px;">Lab Utilization</h3>
+                ${labUtilHtml}
+            </div>
+        </div>` : ''}
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div>
+                <h3 style="margin-bottom:6px;font-size:12px;">By Sector</h3>
+                ${sectorHtml || '<div style="font-size:10px;color:#9ca3af;">N/A</div>'}
+            </div>
+            <div>
+                <h3 style="margin-bottom:6px;font-size:12px;">By Exam</h3>
+                ${examHtml || '<div style="font-size:10px;color:#9ca3af;">N/A</div>'}
+            </div>
+        </div>
+
+        <div style="page-break-before:always;"></div>
+        <h3 style="margin-bottom:8px;font-size:13px;">Full Examinee List (${sorted.length} examinees)</h3>
+        ${examineeTblHtml}
+        <p style="text-align:center;color:#9ca3af;font-size:9px;margin-top:24px;">Eng. Firas Kiftaro &mdash; Assessment Management System v4.0</p>`;
+    html2pdf().set({margin:[6,6,6,6],filename:`Center_Report_${centerName.replace(/\s+/g,'_')}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(div).save();
+    showToast(`PDF for "${centerName}" exported!`,'success');
+}
+
+function exportCenterAttendanceExcel(centerName) {
+    const ca=state.assignments.filter(a=>a._center===centerName);
+    if(!ca.length){showToast('No assignments for this center','warning');return;}
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+    const exf=findField(['Exam Name','ExamName','Exam']);
+    const sf=findField(['Sector','sector']);
+
+    const sorted=[...ca].sort((a,b)=>a._day-b._day||a._round-b._round||a._lab.localeCompare(b._lab)||a._seatNo-b._seatNo);
+
+    const rows = sorted.map((a,i)=>{
+        const row = {'#': i+1, 'Name': String(a[nf]||'')};
+        if(idf) row['Employee ID'] = String(a[idf]||'');
+        if(sf) row['Sector'] = String(a[sf]||'');
+        if(exf) row['Exam'] = String(a[exf]||'');
+        row['Day'] = `Day ${a._day}`;
+        row['Round'] = `R${a._round}`;
+        row['Time'] = a._time;
+        row['Lab'] = a._lab;
+        row['Seat'] = a._seatNo;
+        row['Status'] = a._attended===true?'Present':a._attended===false?'Absent':'Unmarked';
+        return row;
+    });
+
+    // Summary sheet
+    const days=[...new Set(ca.map(a=>a._day))].sort((a,b)=>a-b);
+    const summaryRows = days.map(d=>{
+        const dayAll=ca.filter(a=>a._day===d);
+        const p=dayAll.filter(a=>a._attended===true).length;
+        const ab=dayAll.filter(a=>a._attended===false).length;
+        const u=dayAll.length-p-ab;
+        return {'Day':`Day ${d}`,'Total':dayAll.length,'Present':p,'Absent':ab,'Unmarked':u,'Attendance %':(p+ab)>0?Math.round(p/(p+ab)*100)+'%':'N/A'};
+    });
+    // Overall row
+    const allP=ca.filter(a=>a._attended===true).length;
+    const allA=ca.filter(a=>a._attended===false).length;
+    const allU=ca.length-allP-allA;
+    summaryRows.push({'Day':'TOTAL','Total':ca.length,'Present':allP,'Absent':allA,'Unmarked':allU,'Attendance %':(allP+allA)>0?Math.round(allP/(allP+allA)*100)+'%':'N/A'});
+
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.max(k.length,...rows.slice(0,100).map(r=>String(r[k]||'').length))+2}));
+    XLSX.utils.book_append_sheet(wb,ws,'Examinee List');
+
+    const ws2=XLSX.utils.json_to_sheet(summaryRows);
+    ws2['!cols']=Object.keys(summaryRows[0]).map(k=>({wch:Math.max(k.length,14)}));
+    XLSX.utils.book_append_sheet(wb,ws2,'Attendance Summary');
+
+    // Absent-only sheet
+    const absentRows = sorted.filter(a=>a._attended===false).map((a,i)=>{
+        const row = {'#': i+1, 'Name': String(a[nf]||'')};
+        if(idf) row['Employee ID'] = String(a[idf]||'');
+        if(sf) row['Sector'] = String(a[sf]||'');
+        if(exf) row['Exam'] = String(a[exf]||'');
+        row['Day'] = `Day ${a._day}`;
+        row['Round'] = `R${a._round}`;
+        row['Time'] = a._time;
+        row['Lab'] = a._lab;
+        row['Seat'] = a._seatNo;
+        return row;
+    });
+    if(absentRows.length) {
+        const ws3=XLSX.utils.json_to_sheet(absentRows);
+        ws3['!cols']=Object.keys(absentRows[0]).map(k=>({wch:Math.max(k.length,...absentRows.slice(0,100).map(r=>String(r[k]||'').length))+2}));
+        XLSX.utils.book_append_sheet(wb,ws3,'Absent Examinees');
+    }
+
+    XLSX.writeFile(wb,`${centerName.replace(/\s+/g,'_')}_Attendance.xlsx`);
+    showToast(`Excel exported for "${centerName}"!`,'success');
+}
+
+// ================= ATTENDANCE SHEETS =================
+function generateAllAttendanceSheets() {
+    if(!state.assignments.length){showToast('Run distribution first','warning');return;}
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+    const d=state.distribution, div=document.createElement('div');
+    div.style.cssText='font-family:Inter,sans-serif;color:#1a1d23;';
+
+    for(let day=1;day<=d.daysNeeded;day++){
+        let examDate='';
+        if(state.examStartDate){const dt=new Date(state.examStartDate);dt.setDate(dt.getDate()+(day-1));examDate=dt.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+        for(let r=1;r<=d.rounds;r++){
+            const roundTime=state.roundTimings[r-1]?`${state.roundTimings[r-1].start} - ${state.roundTimings[r-1].end}`:'';
+            const ra=state.assignments.filter(a=>a._day===day&&a._round===r);
+            const lg={};
+            ra.forEach(a=>{const k=`${a._center}|${a._lab}`;if(!lg[k])lg[k]={center:a._center,lab:a._lab,items:[]};lg[k].items.push(a);});
+            Object.values(lg).forEach(grp=>{
+                div.innerHTML+=`
+                    <div style="page-break-after:always;padding:20px;">
+                        <div style="text-align:center;margin-bottom:20px;">
+                            <h2 style="color:#4f46e5;margin-bottom:4px;">${esc(state.examName)}</h2>
+                            <h3 style="margin-bottom:4px;">Attendance Sheet</h3>
+                            <p style="color:#6b7280;font-size:13px;margin-bottom:2px;"><strong>Date:</strong> ${examDate} | <strong>Day:</strong> ${day} | <strong>Round:</strong> ${r} | <strong>Time:</strong> ${roundTime}</p>
+                            <p style="color:#6b7280;font-size:13px;"><strong>Center:</strong> ${esc(grp.center)} | <strong>Lab:</strong> ${esc(grp.lab)}</p>
+                        </div>
+                        <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #000;">
+                            <thead><tr style="background:#f0f0f0;">
+                                <th style="border:1px solid #000;padding:8px;width:30px;">#</th>
+                                <th style="border:1px solid #000;padding:8px;">Name</th>
+                                ${idf?'<th style="border:1px solid #000;padding:8px;">Employee ID</th>':''}
+                                <th style="border:1px solid #000;padding:8px;width:120px;">Signature</th>
+                                <th style="border:1px solid #000;padding:8px;width:80px;">Notes</th>
+                            </tr></thead>
+                            <tbody>${grp.items.map((a,i)=>`<tr>
+                                <td style="border:1px solid #000;padding:6px;text-align:center;">${i+1}</td>
+                                <td style="border:1px solid #000;padding:6px;">${esc(String(a[nf]||''))}</td>
+                                ${idf?`<td style="border:1px solid #000;padding:6px;">${esc(String(a[idf]||''))}</td>`:''}
+                                <td style="border:1px solid #000;padding:6px;"></td>
+                                <td style="border:1px solid #000;padding:6px;"></td>
+                            </tr>`).join('')}</tbody>
+                        </table>
+                        <div style="margin-top:20px;display:flex;justify-content:space-between;font-size:12px;color:#6b7280;">
+                            <span>Total: ${grp.items.length} examinee(s)</span>
+                            <span>Supervisor Signature: _______________</span>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+    html2pdf().set({margin:8,filename:'Attendance_Sheets.pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css']}}).from(div).save();
+    showToast('Attendance sheets exported!','success');
+}
+
+function exportAttendanceExcel() {
+    if(!state.assignments.length){showToast('Run distribution first','warning');return;}
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+    const d=state.distribution, wb=XLSX.utils.book_new();
+    for(let day=1;day<=d.daysNeeded;day++){
+        for(let r=1;r<=d.rounds;r++){
+            const ra=state.assignments.filter(a=>a._day===day&&a._round===r);
+            if(!ra.length) continue;
+            const data=ra.map((a,i)=>{const row={'#':i+1,'Name':a[nf]||''};if(idf)row['Employee ID']=a[idf]||'';row['Signature']='';return row;});
+            const ws=XLSX.utils.json_to_sheet(data);
+            ws['!cols']=Object.keys(data[0]).map(k=>({wch:Math.max(k.length,15)}));
+            XLSX.utils.book_append_sheet(wb,ws,`D${day}_R${r}`);
+        }
+    }
+    XLSX.writeFile(wb,'Attendance_Sheets.xlsx');
+    showToast('Attendance sheets (Excel) exported!','success');
+}
+
+// ================= ADMISSION CARDS (COMBINED PDF) =================
+function buildCardHtml(a) {
+    const nf=findField(['Name_En','Name_Ar','Name','name','Full Name'])||state.headers[0];
+    const idf=findField(['Employee ID','EmployeeID','ID']);
+    const exf=findField(['Exam Name','ExamName','Exam']);
+    const sf=findField(['Sector','sector']);
+    const jf=findField(['Job Category','JobCategory','Job']);
+    const emlf=findField(['Email','email','E-mail']);
+    let qrUrl='';
+    if(a._centerLink){try{const qr=qrcode(0,'M');qr.addData(a._centerLink);qr.make();qrUrl=qr.createDataURL(3,0);}catch(e){}}
+    return `<div style="border:2px solid #4f46e5;border-radius:12px;padding:16px;background:white;">
+        <div style="text-align:center;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:800;color:#4f46e5;">${esc(state.examName)}</div>
+            <div style="font-size:10px;color:#6b7280;">${esc(state.examOrganizer)}</div>
+            <div style="font-size:11px;font-weight:700;color:#1a1d23;margin-top:4px;">ADMISSION CARD</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="flex:1;font-size:11px;line-height:1.8;">
+                <div><strong>Name:</strong> ${esc(String(a[nf]||''))}</div>
+                ${idf?`<div><strong>Employee ID:</strong> ${esc(String(a[idf]||''))}</div>`:''}
+                ${emlf?`<div><strong>Email:</strong> ${esc(String(a[emlf]||''))}</div>`:''}
+                ${exf?`<div><strong>Exam:</strong> ${esc(String(a[exf]||''))}</div>`:''}
+                ${sf?`<div><strong>Sector:</strong> ${esc(String(a[sf]||''))}</div>`:''}
+                ${jf?`<div><strong>Job:</strong> ${esc(String(a[jf]||''))}</div>`:''}
+                <hr style="border:none;border-top:1px solid #e5e7eb;margin:6px 0;">
+                <div><strong>Day:</strong> ${a._day} ${a._date?'('+a._date+')':''}</div>
+                <div><strong>Time:</strong> ${a._time}</div>
+                <div><strong>Center:</strong> ${esc(a._center)}</div>
+                <div><strong>Lab:</strong> ${esc(a._lab)}</div>
+                <div><strong>Seat No:</strong> ${a._seatNo}</div>
+            </div>
+            ${qrUrl?`<div style="text-align:center;"><img src="${qrUrl}" style="width:70px;height:70px;"><div style="font-size:8px;color:#9ca3af;margin-top:2px;">Scan for<br>Location</div></div>`:''}
+        </div>
+        <div style="text-align:center;margin-top:8px;font-size:8px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:6px;">Please arrive 15 minutes before the exam</div>
+    </div>`;
+}
+
+// ================= INDIVIDUAL ADMISSION CARDS (saved one by one) =================
+async function generateIndividualAdmissionCards() {
+    if(!state.assignments.length){showToast('Run distribution first','warning');return;}
+    const nameEnField = findField(['Name_En','Name','name','Full Name']);
+    if(!nameEnField){showToast('No "Name_En" column found in data.','error');return;}
+
+    // Ask user to pick a destination folder
+    let dirHandle;
+    try {
+        dirHandle = await window.showDirectoryPicker({mode:'readwrite'});
+    } catch(err) {
+        if(err.name==='AbortError') return; // user cancelled
+        showToast('Folder selection not supported in this browser. Try Chrome or Edge.','error');
+        return;
+    }
+
+    showProgress('Generating individual admission cards...','0 / '+state.assignments.length);
+    const nameCount = {};
+
+    for(let i=0;i<state.assignments.length;i++){
+        const a = state.assignments[i];
+        let rawName = String(a[nameEnField]||'unknown_'+i).trim();
+        let safeName = rawName.replace(/[^a-zA-Z0-9 _-]/g,'_').replace(/\s+/g,'_');
+        if(!nameCount[safeName]) nameCount[safeName]=0;
+        nameCount[safeName]++;
+        if(nameCount[safeName]>1) safeName += '_' + nameCount[safeName];
+
+        // Render card offscreen behind progress overlay (z-index 2999 < overlay 3000)
+        const div = document.createElement('div');
+        div.style.cssText='position:fixed;left:0;top:0;width:400px;background:#fff;z-index:2999;padding:20px;font-family:Inter,sans-serif;color:#1a1d23;';
+        div.innerHTML = buildCardHtml(a);
+        document.body.appendChild(div);
+
+        await new Promise(r=>setTimeout(r,80));
+
+        try {
+            const canvas = await html2canvas(div,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+            const { jsPDF } = window.jspdf;
+            const cardW=110, cardH=160;
+            const pdf = new jsPDF({unit:'mm',format:[cardW,cardH],orientation:'portrait'});
+            const imgData = canvas.toDataURL('image/jpeg',0.92);
+            const imgW=canvas.width, imgH=canvas.height;
+            const ratio=Math.min((cardW-6)/imgW,(cardH-6)/imgH);
+            const w=imgW*ratio, h=imgH*ratio;
+            pdf.addImage(imgData,'JPEG',(cardW-w)/2,3,w,h);
+
+            // Write file directly to selected folder
+            const fileHandle = await dirHandle.getFileHandle(`${safeName}.pdf`,{create:true});
+            const writable = await fileHandle.createWritable();
+            const pdfArrayBuffer = pdf.output('arraybuffer');
+            await writable.write(pdfArrayBuffer);
+            await writable.close();
+        } catch(err) {
+            console.error('Error generating card for '+safeName, err);
+        }
+        document.body.removeChild(div);
+
+        updateProgress('Generating individual admission cards...',`${i+1} / ${state.assignments.length}`);
+    }
+
+    hideProgress();
+    showToast(`${state.assignments.length} individual cards saved to folder!`,'success');
+}
+
+function showProgress(text,sub) { document.getElementById('progressText').textContent=text; document.getElementById('progressSub').textContent=sub||''; document.getElementById('progressOverlay').classList.add('show'); }
+function updateProgress(text,sub) { document.getElementById('progressText').textContent=text; document.getElementById('progressSub').textContent=sub||''; }
+function hideProgress() { document.getElementById('progressOverlay').classList.remove('show'); }
+
+// ================= SAVED RUNS (IndexedDB) =================
+const RUNS_DB_NAME = 'ExamDistributionRuns';
+const RUNS_STORE = 'runs';
+
+function openRunsDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(RUNS_DB_NAME, 1);
+        req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains(RUNS_STORE)) {
+                const store = db.createObjectStore(RUNS_STORE, {keyPath: 'id'});
+                store.createIndex('savedAt', 'savedAt', {unique: false});
+            }
+        };
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+    });
+}
+
+async function getAllSavedRuns() {
+    const db = await openRunsDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(RUNS_STORE, 'readonly');
+        const store = tx.objectStore(RUNS_STORE);
+        const req = store.getAll();
+        req.onsuccess = () => {
+            const runs = req.result || [];
+            runs.sort((a,b) => new Date(b.savedAt) - new Date(a.savedAt));
+            resolve(runs);
+        };
+        req.onerror = e => reject(e.target.error);
+    });
+}
+
+async function putSavedRun(run) {
+    const db = await openRunsDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(RUNS_STORE, 'readwrite');
+        const store = tx.objectStore(RUNS_STORE);
+        store.put(run);
+        tx.oncomplete = () => resolve();
+        tx.onerror = e => reject(e.target.error);
+    });
+}
+
+async function removeSavedRun(id) {
+    const db = await openRunsDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(RUNS_STORE, 'readwrite');
+        const store = tx.objectStore(RUNS_STORE);
+        store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = e => reject(e.target.error);
+    });
+}
+
+function buildRunSnapshot(label) {
+    collectRoundTimings();
+    return {
+        id: 'run_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+        label: label || (state.examName || 'Untitled') + ' — ' + new Date().toLocaleString(),
+        savedAt: new Date().toISOString(),
+        examName: document.getElementById('examName').value || '',
+        examOrganizer: document.getElementById('examOrganizer').value || '',
+        examYear: document.getElementById('examYear').value || 2026,
+        examStartDate: document.getElementById('examStartDate').value || '',
+        roundsPerDay: state.roundsPerDay,
+        roundTimings: JSON.parse(JSON.stringify(state.roundTimings)),
+        selectedCenters: JSON.parse(JSON.stringify(state.selectedCenters)),
+        headers: [...state.headers],
+        examinees: JSON.parse(JSON.stringify(state.examinees)),
+        assignments: JSON.parse(JSON.stringify(state.assignments)),
+        distribution: state.distribution ? JSON.parse(JSON.stringify(state.distribution)) : null,
+        conflicts: JSON.parse(JSON.stringify(state.conflicts))
+    };
+}
+
+async function autoSaveRun() {
+    try {
+        const snap = buildRunSnapshot();
+        snap.label = (state.examName || 'Untitled') + ' — Auto — ' + new Date().toLocaleString();
+        await putSavedRun(snap);
+        // Keep max 20 runs
+        const runs = await getAllSavedRuns();
+        if(runs.length > 20) {
+            for(let i=20; i<runs.length; i++) await removeSavedRun(runs[i].id);
+        }
+        await renderSavedRuns();
+    } catch(e) {
+        console.warn('Auto-save failed:', e);
+    }
+}
+
+async function saveCurrentRun() {
+    if(!state.assignments.length) { showToast('No distribution to save. Run the distribution first.','warning'); return; }
+    const label = prompt('Enter a name for this run:', (state.examName || 'Untitled') + ' — ' + new Date().toLocaleString());
+    if(label === null) return;
+    try {
+        const snap = buildRunSnapshot(label);
+        await putSavedRun(snap);
+        await renderSavedRuns();
+        showToast('Run saved!','success');
+    } catch(e) {
+        showToast('Error saving run: ' + e.message,'error');
+    }
+}
+
+async function loadSavedRun(id) {
+    try {
+        const runs = await getAllSavedRuns();
+        const run = runs.find(r => r.id === id);
+        if(!run) { showToast('Run not found','error'); return; }
+        if(!confirm(`Load run "${run.label}"? This will replace your current data.`)) return;
+
+        // Restore exam settings
+        document.getElementById('examName').value = run.examName || '';
+        document.getElementById('examOrganizer').value = run.examOrganizer || '';
+        document.getElementById('examYear').value = run.examYear || 2026;
+        document.getElementById('examStartDate').value = run.examStartDate || '';
+        document.getElementById('roundsPerDay').value = run.roundsPerDay || 2;
+
+        // Restore state (deep copy to prevent mutation)
+        state.examName = run.examName || '';
+        state.examOrganizer = run.examOrganizer || '';
+        state.examYear = run.examYear || 2026;
+        state.examStartDate = run.examStartDate || '';
+        state.roundsPerDay = run.roundsPerDay || 2;
+        state.roundTimings = run.roundTimings || [];
+        state.selectedCenters = run.selectedCenters || [];
+        state.headers = run.headers || [];
+        state.examinees = run.examinees || [];
+        state.assignments = run.assignments || [];
+        state.distribution = run.distribution || null;
+        state.conflicts = run.conflicts || [];
+
+        // Re-render schedule
+        autoGenerateRoundTimings();
+        if(run.roundTimings) {
+            const st=document.querySelectorAll('.round-start'), en=document.querySelectorAll('.round-end');
+            run.roundTimings.forEach((t,i)=>{ if(st[i]) st[i].value=t.start; if(en[i]) en[i].value=t.end; });
+        }
+
+        // Re-render centers
+        renderSelectedCenters();
+
+        // Re-render upload preview
+        if(state.examinees.length) {
+            const prev = document.getElementById('previewCard');
+            if(prev) prev.style.display = 'block';
+            document.getElementById('fileInfo').innerHTML = `
+                <div class="file-info-icon"><i class="fas fa-check"></i></div>
+                <div class="file-info-text"><div class="file-info-name">Loaded from saved run</div><div class="file-info-meta">${state.examinees.length} examinees, ${state.headers.length} columns</div></div>
+                <button class="btn btn-sm btn-ghost" onclick="removeFile()"><i class="fas fa-times"></i></button>`;
+            document.getElementById('fileInfo').classList.add('show');
+            const thead = state.headers.map(h=>`<th>${esc(h)}</th>`).join('');
+            const tbody = state.examinees.slice(0,10).map(r=>`<tr>${state.headers.map(h=>`<td>${esc(String(r[h]||''))}</td>`).join('')}</tr>`).join('');
+            document.getElementById('previewTable').innerHTML = `<table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>${state.examinees.length>10?`<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:8px;">Showing 10 of ${state.examinees.length} rows</p>`:''}`;
+        }
+
+        // Re-render distribution results
+        if(state.distribution && state.assignments.length) {
+            renderConflicts(); renderStats(); renderVisualGrid(); renderDistributionTable(); renderChart();
+            renderFullAssignmentTable(state.assignments); renderDnDSelectors();
+            document.getElementById('statsGrid').style.display='grid';
+            document.getElementById('resultSection').style.display='block';
+        }
+
+        showToast(`Run "${run.label}" loaded!`,'success');
+        closeSavedRunsModal();
+        goToStep(5);
+    } catch(e) {
+        showToast('Error loading run: ' + e.message,'error');
+    }
+}
+
+async function deleteSavedRun(id) {
+    try {
+        const runs = await getAllSavedRuns();
+        const run = runs.find(r => r.id === id);
+        if(!run) return;
+        if(!confirm(`Delete run "${run.label}"?`)) return;
+        await removeSavedRun(id);
+        await renderSavedRuns();
+        showToast('Run deleted','success');
+    } catch(e) {
+        showToast('Error deleting run: ' + e.message,'error');
+    }
+}
+
+async function renderSavedRuns() {
+    const el = document.getElementById('savedRunsList');
+    if(!el) return;
+    try {
+        const runs = await getAllSavedRuns();
+        if(!runs.length) {
+            el.innerHTML = '<div class="empty-state" style="padding:20px;"><i class="fas fa-inbox"></i><p>No saved runs yet</p></div>';
+            return;
+        }
+        el.innerHTML = `<div class="table-container"><table><thead><tr><th>Name</th><th>Examinees</th><th>Assignments</th><th>Days</th><th>Saved At</th><th style="width:160px;">Actions</th></tr></thead><tbody>
+        ${runs.map(r => {
+            const d = r.distribution || {};
+            const savedDate = new Date(r.savedAt).toLocaleString();
+            return `<tr>
+                <td><strong>${esc(r.label)}</strong></td>
+                <td>${r.examinees?.length || 0}</td>
+                <td>${r.assignments?.length || 0}</td>
+                <td>${d.daysNeeded || '?'}</td>
+                <td style="font-size:12px;color:var(--text-secondary);">${savedDate}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="loadSavedRun('${r.id}')" style="margin-right:4px;"><i class="fas fa-upload"></i> Load</button>
+                    <button class="btn btn-sm btn-ghost" onclick="deleteSavedRun('${r.id}')"><i class="fas fa-trash" style="color:var(--danger);"></i></button>
+                </td>
+            </tr>`;
+        }).join('')}
+        </tbody></table></div>`;
+    } catch(e) {
+        el.innerHTML = '<div class="empty-state" style="padding:20px;"><i class="fas fa-exclamation-triangle"></i><p>Error loading saved runs</p></div>';
+    }
+}
+
+// ================= SAVE / LOAD CONFIG =================
+function saveConfig() {
+    collectRoundTimings();
+    const config={examName:document.getElementById('examName').value,examOrganizer:document.getElementById('examOrganizer').value,examYear:document.getElementById('examYear').value,examStartDate:document.getElementById('examStartDate').value,roundsPerDay:state.roundsPerDay,roundTimings:state.roundTimings,selectedCenters:state.selectedCenters};
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(config,null,2)],{type:'application/json'})); a.download='exam_config.json'; a.click(); URL.revokeObjectURL(a.href);
+    showToast('Configuration saved!','success');
+}
+
+function loadConfig() {
+    const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    inp.onchange=e=>{
+        const file=e.target.files[0]; if(!file)return;
+        const reader=new FileReader();
+        reader.onload=ev=>{
+            try{
+                const c=JSON.parse(ev.target.result);
+                if(c.examName) document.getElementById('examName').value=c.examName;
+                if(c.examOrganizer) document.getElementById('examOrganizer').value=c.examOrganizer;
+                if(c.examYear) document.getElementById('examYear').value=c.examYear;
+                if(c.examStartDate) document.getElementById('examStartDate').value=c.examStartDate;
+                document.getElementById('roundsPerDay').value=c.roundsPerDay||2;
+                state.roundsPerDay=c.roundsPerDay||2;
+                state.roundTimings=c.roundTimings||[];
+                autoGenerateRoundTimings();
+                if(c.roundTimings){const st=document.querySelectorAll('.round-start'),en=document.querySelectorAll('.round-end');c.roundTimings.forEach((t,i)=>{if(st[i])st[i].value=t.start;if(en[i])en[i].value=t.end;});}
+                if(c.selectedCenters){state.selectedCenters=c.selectedCenters;renderSelectedCenters();}
+                showToast('Configuration loaded!','success');
+            }catch(err){showToast('Error loading config: '+err.message,'error');}
+        };
+        reader.readAsText(file);
+    };
+    inp.click();
+}
+
+// ================= UTILITY =================
+function esc(text) { const d=document.createElement('div');d.textContent=text;return d.innerHTML; }
+
+// ================= INIT =================
+document.addEventListener('DOMContentLoaded', async () => {
+    renderCenterProfiles();
+    autoGenerateRoundTimings();
+    // Migrate old localStorage runs to IndexedDB
+    try {
+        const old = JSON.parse(localStorage.getItem('savedRuns') || '[]');
+        if(old.length) {
+            for(const r of old) {
+                if(typeof r.id === 'number') r.id = 'run_' + r.id + '_m';
+                await putSavedRun(r);
+            }
+            localStorage.removeItem('savedRuns');
+            console.log('Migrated', old.length, 'runs from localStorage to IndexedDB');
+        }
+    } catch(e) { console.warn('Migration failed:', e); }
+    await renderSavedRuns();
+});
+</script>
+</body>
+</html>

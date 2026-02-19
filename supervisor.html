@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor Portal — Assessment Management System</title>
+
+    <!-- Supabase JS v2 (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- QR Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- QR Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Supervisor styles -->
+    <link rel="stylesheet" href="css/supervisor.css">
+</head>
+<body>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toast-container"></div>
+
+<!-- ==================== LOGIN SCREEN ==================== -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo"><i class="fas fa-graduation-cap"></i></div>
+            <h1>Supervisor Portal</h1>
+            <p>Sign in to manage your assessment center</p>
+        </div>
+        <form id="login-form" autocomplete="on">
+            <div class="form-group">
+                <label for="login-email">Email Address</label>
+                <input type="email" id="login-email" required placeholder="supervisor@example.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" required placeholder="Enter your password" autocomplete="current-password">
+            </div>
+            <div id="login-error" class="error-msg" style="display:none"></div>
+            <button type="submit" id="login-btn" class="btn btn-primary btn-lg btn-block">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+        </form>
+        <div style="text-align:center;margin-top:20px;">
+            <a href="index.html" style="font-size:13px;color:var(--text-muted);text-decoration:none;">
+                <i class="fas fa-arrow-left"></i> Back to Distribution Tool
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== APP SCREEN ==================== -->
+<div id="app-screen" style="display:none">
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="header-logo"><i class="fas fa-graduation-cap"></i></div>
+                <div>
+                    <div class="header-title">Supervisor Portal</div>
+                    <div class="header-subtitle" id="header-center-name">Loading…</div>
+                </div>
+            </div>
+            <div class="header-user">
+                <span id="header-user-name">Supervisor</span>
+                <button class="header-btn" onclick="App.handleSignOut()" title="Sign out">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="examinees">
+            <i class="fas fa-users"></i> Examinees
+        </button>
+        <button class="tab-btn" data-tab="reports">
+            <i class="fas fa-chart-bar"></i> Reports
+        </button>
+        <button class="tab-btn" data-tab="attendance">
+            <i class="fas fa-qrcode"></i> Take Attendance
+        </button>
+        <button class="tab-btn" data-tab="cards">
+            <i class="fas fa-id-card"></i> Admission Cards
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- ===== EXAMINEES TAB ===== -->
+        <div class="tab-panel active" id="panel-examinees">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon primary"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="card-title">Examinee List</div>
+                        <div class="card-desc" id="examinees-count">Loading…</div>
+                    </div>
+                </div>
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="examinees-search" placeholder="Search by name or national ID…">
+                </div>
+                <div class="table-wrap" id="examinees-table">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading examinees…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== REPORTS TAB ===== -->
+        <div class="tab-panel" id="panel-reports">
+            <div class="stats-grid" id="report-stats"></div>
+            <div class="card" id="report-details">
+                <div class="card-header">
+                    <div class="card-icon info"><i class="fas fa-chart-bar"></i></div>
+                    <div>
+                        <div class="card-title">Attendance Report</div>
+                        <div class="card-desc">Breakdown by session</div>
+                    </div>
+                </div>
+                <div id="report-content">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading report…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ATTENDANCE TAB ===== -->
+        <div class="tab-panel" id="panel-attendance">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon success"><i class="fas fa-qrcode"></i></div>
+                    <div>
+                        <div class="card-title">Scan QR Code</div>
+                        <div class="card-desc">Scan examinee admission cards to register attendance</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="exam-session-input">Exam Session (optional — defaults to today's date)</label>
+                    <input type="text" id="exam-session-input" placeholder="e.g. 2026-02-19 or Round 1">
+                </div>
+
+                <div class="scan-controls">
+                    <button id="start-scan-btn" class="btn btn-success btn-lg" onclick="App.startScanner()">
+                        <i class="fas fa-camera"></i> Start Camera
+                    </button>
+                    <button id="stop-scan-btn" class="btn btn-danger btn-lg" onclick="App.stopScanner()" style="display:none">
+                        <i class="fas fa-stop"></i> Stop Camera
+                    </button>
+                </div>
+
+                <div id="qr-reader" style="display:none;margin-top:16px;"></div>
+                <div id="scan-result" style="margin-top:16px;"></div>
+                <div id="recent-scans" style="margin-top:24px;"></div>
+            </div>
+        </div>
+
+        <!-- ===== ADMISSION CARDS TAB ===== -->
+        <div class="tab-panel" id="panel-cards">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon warning"><i class="fas fa-id-card"></i></div>
+                    <div>
+                        <div class="card-title">Admission Cards</div>
+                        <div class="card-desc">Generate and print admission cards with QR codes for attendance</div>
+                    </div>
+                </div>
+                <div class="btn-group" style="margin-bottom:20px;">
+                    <button class="btn btn-primary" onclick="App.printAllCards()">
+                        <i class="fas fa-print"></i> Print All Cards
+                    </button>
+                </div>
+                <div id="cards-list">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading cards…</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border-color);background:var(--bg-secondary);">
+        <p>Created by <strong>Eng. Firas Kiftaro</strong> — Assessment Management System &copy; 2025-2026</p>
+    </footer>
+
+</div>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/attendance.js"></script>
+<script src="js/admission-card.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

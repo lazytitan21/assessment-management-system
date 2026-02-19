@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal — Assessment Management System</title>
+
+    <!-- Supabase JS v2 (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Reuse supervisor styles (same design language) -->
+    <link rel="stylesheet" href="css/supervisor.css">
+
+    <style>
+        /* Admin-specific overrides */
+        #login-screen {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4f46e5 100%);
+        }
+        .admin-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 600;
+            background: rgba(245,158,11,0.1); color: #f59e0b;
+        }
+
+        /* Modal / Dialog */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px; animation: fadeIn 0.2s ease;
+        }
+        .modal-overlay.hidden { display: none; }
+        .modal {
+            background: var(--bg-card); border-radius: var(--radius-lg);
+            padding: 32px; width: 100%; max-width: 520px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: fadeIn 0.3s ease;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal h2 {
+            font-size: 20px; font-weight: 700; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .modal h2 i { color: var(--primary); }
+        .modal-actions {
+            display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end;
+        }
+
+        /* Supervisor card in the list */
+        .supervisor-item {
+            display: flex; align-items: center; gap: 16px;
+            padding: 16px 20px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); margin-bottom: 10px;
+            background: var(--bg-card); transition: var(--transition);
+        }
+        .supervisor-item:hover { box-shadow: var(--shadow-md); }
+        .supervisor-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: var(--primary-bg); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 700; flex-shrink: 0;
+        }
+        .supervisor-info { flex: 1; min-width: 0; }
+        .supervisor-name { font-weight: 700; font-size: 15px; }
+        .supervisor-email { font-size: 13px; color: var(--text-secondary); }
+        .supervisor-center { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .supervisor-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        /* Center item */
+        .center-item {
+            display: flex; align-items: center; gap: 16px;
+            padding: 16px 20px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); margin-bottom: 10px;
+            background: var(--bg-card); transition: var(--transition);
+        }
+        .center-item:hover { box-shadow: var(--shadow-md); }
+        .center-icon {
+            width: 44px; height: 44px; border-radius: var(--radius-sm);
+            background: var(--info-bg); color: var(--info);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+        .center-info { flex: 1; min-width: 0; }
+        .center-name { font-weight: 700; font-size: 15px; }
+        .center-location { font-size: 13px; color: var(--text-secondary); }
+        .center-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        /* Password field with show/hide */
+        .password-field { position: relative; }
+        .password-field input { padding-right: 42px; }
+        .password-toggle {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--text-muted); cursor: pointer;
+            font-size: 14px; padding: 4px;
+        }
+        .password-toggle:hover { color: var(--text-primary); }
+
+        /* Inline success msg */
+        .success-msg {
+            padding: 10px 14px; background: var(--success-bg); border: 1px solid rgba(16,185,129,0.2);
+            border-radius: var(--radius-sm); color: var(--success); font-size: 13px;
+            margin-bottom: 12px; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toast-container"></div>
+
+<!-- ==================== LOGIN SCREEN ==================== -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo"><i class="fas fa-shield-alt"></i></div>
+            <h1>Admin Portal</h1>
+            <p>Sign in to manage supervisors and centers</p>
+        </div>
+        <form id="login-form" autocomplete="on">
+            <div class="form-group">
+                <label for="login-email">Email Address</label>
+                <input type="email" id="login-email" required placeholder="admin@example.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" required placeholder="Enter your password" autocomplete="current-password">
+            </div>
+            <div id="login-error" class="error-msg" style="display:none"></div>
+            <button type="submit" id="login-btn" class="btn btn-primary btn-lg btn-block">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+        </form>
+        <div style="text-align:center;margin-top:20px;">
+            <a href="index.html" style="font-size:13px;color:var(--text-muted);text-decoration:none;">
+                <i class="fas fa-arrow-left"></i> Back to Distribution Tool
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== APP SCREEN ==================== -->
+<div id="app-screen" style="display:none">
+
+    <!-- Header -->
+    <header class="app-header" style="background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="header-logo"><i class="fas fa-shield-alt"></i></div>
+                <div>
+                    <div class="header-title">Admin Portal</div>
+                    <div class="header-subtitle">Assessment Management System</div>
+                </div>
+            </div>
+            <div class="header-user">
+                <span class="admin-badge"><i class="fas fa-crown"></i> Admin</span>
+                <span id="header-user-name">Admin</span>
+                <button class="header-btn" onclick="Admin.handleSignOut()" title="Sign out">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="supervisors">
+            <i class="fas fa-user-shield"></i> Supervisors
+        </button>
+        <button class="tab-btn" data-tab="centers">
+            <i class="fas fa-building"></i> Centers
+        </button>
+        <button class="tab-btn" data-tab="overview">
+            <i class="fas fa-chart-pie"></i> Overview
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- ===== SUPERVISORS TAB ===== -->
+        <div class="tab-panel active" id="panel-supervisors">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon primary"><i class="fas fa-user-shield"></i></div>
+                    <div style="flex:1">
+                        <div class="card-title">Supervisors</div>
+                        <div class="card-desc" id="supervisors-count">Loading…</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="Admin.openAddSupervisorModal()">
+                        <i class="fas fa-plus"></i> Add Supervisor
+                    </button>
+                </div>
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="supervisors-search" placeholder="Search by name or email…">
+                </div>
+                <div id="supervisors-list">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading supervisors…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CENTERS TAB ===== -->
+        <div class="tab-panel" id="panel-centers">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon info"><i class="fas fa-building"></i></div>
+                    <div style="flex:1">
+                        <div class="card-title">Assessment Centers</div>
+                        <div class="card-desc" id="centers-count">Loading…</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="Admin.openAddCenterModal()">
+                        <i class="fas fa-plus"></i> Add Center
+                    </button>
+                </div>
+                <div id="centers-list">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading centers…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== OVERVIEW TAB ===== -->
+        <div class="tab-panel" id="panel-overview">
+            <div class="stats-grid" id="overview-stats"></div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon warning"><i class="fas fa-chart-pie"></i></div>
+                    <div>
+                        <div class="card-title">System Overview</div>
+                        <div class="card-desc">Summary across all centers</div>
+                    </div>
+                </div>
+                <div id="overview-content">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border-color);background:var(--bg-secondary);">
+        <p>Created by <strong>Eng. Firas Kiftaro</strong> — Assessment Management System &copy; 2025-2026</p>
+    </footer>
+
+</div>
+
+<!-- ==================== ADD SUPERVISOR MODAL ==================== -->
+<div id="add-supervisor-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2><i class="fas fa-user-plus"></i> Add New Supervisor</h2>
+        <form id="add-supervisor-form">
+            <div class="form-group">
+                <label for="sup-fullname">Full Name</label>
+                <input type="text" id="sup-fullname" required placeholder="e.g. Ahmed Al Supervisor">
+            </div>
+            <div class="form-group">
+                <label for="sup-email">Email Address</label>
+                <input type="email" id="sup-email" required placeholder="supervisor@example.com">
+            </div>
+            <div class="form-group">
+                <label for="sup-password">Password (min 6 characters)</label>
+                <div class="password-field">
+                    <input type="password" id="sup-password" required minlength="6" placeholder="Choose a strong password">
+                    <button type="button" class="password-toggle" onclick="Admin.togglePassword('sup-password', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="sup-center">Assign to Center</label>
+                <select id="sup-center" required>
+                    <option value="">— Select a center —</option>
+                </select>
+            </div>
+            <div id="add-sup-error" class="error-msg" style="display:none"></div>
+            <div id="add-sup-success" class="success-msg" style="display:none"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="Admin.closeModal('add-supervisor-modal')">Cancel</button>
+                <button type="submit" id="add-sup-btn" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Create Supervisor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== ADD CENTER MODAL ==================== -->
+<div id="add-center-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2><i class="fas fa-building"></i> Add New Center</h2>
+        <form id="add-center-form">
+            <div class="form-group">
+                <label for="center-name">Center Name</label>
+                <input type="text" id="center-name" required placeholder="e.g. Engineering Building - Abu Dhabi">
+            </div>
+            <div class="form-group">
+                <label for="center-location">Location (optional)</label>
+                <input type="text" id="center-location" placeholder="e.g. Abu Dhabi, UAE">
+            </div>
+            <div id="add-center-error" class="error-msg" style="display:none"></div>
+            <div id="add-center-success" class="success-msg" style="display:none"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="Admin.closeModal('add-center-modal')">Cancel</button>
+                <button type="submit" id="add-center-btn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Center
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== DELETE CONFIRM MODAL ==================== -->
+<div id="delete-confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2><i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Confirm Delete</h2>
+        <p id="delete-confirm-text" style="margin-bottom:8px; font-size:15px;"></p>
+        <p style="font-size:13px; color:var(--text-muted);">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="Admin.closeModal('delete-confirm-modal')">Cancel</button>
+            <button id="delete-confirm-btn" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script src="js/config.js"></script>
+<script src="js/admin.js"></script>
+
+</body>
+</html>

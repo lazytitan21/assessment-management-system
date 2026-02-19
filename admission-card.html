@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admission Card — Assessment Management System</title>
+
+    <!-- Supabase JS v2 (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- QR Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #4f46e5; --primary-dark: #3730a3;
+            --text-primary: #1a1d23; --text-secondary: #6b7280; --text-muted: #9ca3af;
+            --border-color: #e5e7eb; --border-light: #f0f0f0;
+            --bg-primary: #f0f2f5; --bg-card: #ffffff;
+            --radius-sm: 8px; --radius-md: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary); color: var(--text-primary); padding: 20px;
+        }
+
+        .toolbar {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+            padding: 16px 24px; background: var(--bg-card); border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+        .toolbar h1 { font-size: 18px; font-weight: 700; flex: 1; color: var(--primary); }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px; border: none; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 600; font-family: inherit;
+            cursor: pointer; color: white;
+        }
+        .btn-primary { background: var(--primary); }
+        .btn-ghost { background: #e5e7eb; color: var(--text-primary); }
+
+        .loading-screen {
+            text-align: center; padding: 60px; color: var(--text-muted); font-size: 16px;
+        }
+        .loading-screen i { font-size: 32px; margin-bottom: 16px; display: block; }
+
+        .error-screen {
+            text-align: center; padding: 60px; color: #ef4444; font-size: 16px;
+        }
+
+        /* Admission card styles */
+        .cards-container { max-width: 800px; margin: 0 auto; }
+
+        .admission-card {
+            background: white; padding: 32px; border: 2px solid var(--primary);
+            border-radius: var(--radius-md); margin-bottom: 24px;
+            page-break-inside: avoid; page-break-after: always;
+        }
+        .admission-card-header {
+            text-align: center; margin-bottom: 20px; padding-bottom: 14px;
+            border-bottom: 2px solid var(--primary);
+        }
+        .admission-card-title {
+            font-size: 20px; font-weight: 800; color: var(--primary); letter-spacing: 1px;
+        }
+        .admission-card-subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+        .admission-card-body { display: flex; gap: 24px; align-items: flex-start; }
+        .admission-card-info { flex: 1; }
+        .admission-card-row {
+            font-size: 15px; line-height: 2.2; color: var(--text-primary);
+        }
+        .admission-card-row .label { color: var(--text-secondary); font-weight: 500; }
+        .admission-card-qr { text-align: center; flex-shrink: 0; }
+        .admission-card-qr img {
+            border: 2px solid var(--border-color); border-radius: var(--radius-sm);
+        }
+        .qr-label { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+        .admission-card-footer {
+            margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-light);
+            font-size: 12px; color: var(--text-muted); text-align: center;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .toolbar { display: none !important; }
+            .admission-card { border: 2px solid #333; margin-bottom: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+    <h1><i class="fas fa-id-card"></i> Admission Cards</h1>
+    <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+    <button class="btn btn-ghost" onclick="window.close()"><i class="fas fa-times"></i> Close</button>
+</div>
+
+<div id="content">
+    <div class="loading-screen" id="loading">
+        <i class="fas fa-spinner fa-spin"></i>
+        Loading admission cards…
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+(async function () {
+    'use strict';
+
+    var contentEl = document.getElementById('content');
+
+    // ---- Init Supabase ----
+    var sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+    // ---- Check auth ----
+    var sessionResp = await sb.auth.getSession();
+    var session = sessionResp.data.session;
+    if (!session || !session.user) {
+        contentEl.innerHTML = '<div class="error-screen"><i class="fas fa-lock"></i><br>You must be signed in to view admission cards.<br><br><a href="supervisor.html">Go to Supervisor Portal</a></div>';
+        return;
+    }
+    var userId = session.user.id;
+
+    // ---- Load supervisor & center ----
+    var supResp = await sb.from('supervisors').select('*').eq('user_id', userId).single();
+    if (supResp.error || !supResp.data) {
+        contentEl.innerHTML = '<div class="error-screen">Supervisor profile not found.</div>';
+        return;
+    }
+    var supervisor = supResp.data;
+
+    var centerResp = await sb.from('centers').select('*').eq('id', supervisor.center_id).single();
+    var centerName = (centerResp.data && centerResp.data.name) || 'Unknown Center';
+
+    // ---- Parse query params ----
+    var params = new URLSearchParams(window.location.search);
+    var singleId = params.get('id');
+
+    // ---- Load examinees ----
+    var query = sb.from('examinees').select('*').order('full_name', { ascending: true });
+    if (singleId) query = query.eq('id', singleId);
+
+    var examResp = await query;
+    if (examResp.error) {
+        contentEl.innerHTML = '<div class="error-screen">Error loading examinees: ' + esc(examResp.error.message) + '</div>';
+        return;
+    }
+
+    var examinees = examResp.data || [];
+    if (!examinees.length) {
+        contentEl.innerHTML = '<div class="error-screen"><i class="fas fa-search"></i><br>No examinees found.</div>';
+        return;
+    }
+
+    // ---- Render cards ----
+    var html = '<div class="cards-container">';
+    examinees.forEach(function (ex) {
+        var qrDataUrl = '';
+        try {
+            var qr = qrcode(0, 'M');
+            qr.addData(ex.attendance_code);
+            qr.make();
+            qrDataUrl = qr.createDataURL(6, 0);
+        } catch (e) { /* skip QR */ }
+
+        html += '<div class="admission-card">' +
+            '<div class="admission-card-header">' +
+            '<div class="admission-card-title">ADMISSION CARD</div>' +
+            '<div class="admission-card-subtitle">' + esc(centerName) + '</div>' +
+            '</div>' +
+            '<div class="admission-card-body">' +
+            '<div class="admission-card-info">' +
+            '<div class="admission-card-row"><span class="label">Name:</span> <strong>' + esc(ex.full_name) + '</strong></div>' +
+            (ex.national_id ? '<div class="admission-card-row"><span class="label">National ID:</span> ' + esc(ex.national_id) + '</div>' : '') +
+            (ex.exam_session ? '<div class="admission-card-row"><span class="label">Session:</span> ' + esc(ex.exam_session) + '</div>' : '') +
+            '<div class="admission-card-row"><span class="label">Center:</span> ' + esc(centerName) + '</div>' +
+            '</div>' +
+            (qrDataUrl
+                ? '<div class="admission-card-qr">' +
+                  '<img src="' + qrDataUrl + '" alt="QR Code" width="140" height="140">' +
+                  '<div class="qr-label">Scan for attendance</div>' +
+                  '</div>'
+                : '') +
+            '</div>' +
+            '<div class="admission-card-footer">' +
+            'Please arrive 15 minutes before the exam. Present this card at the entrance.' +
+            '</div>' +
+            '</div>';
+    });
+    html += '</div>';
+    contentEl.innerHTML = html;
+
+    // ---- Utility ----
+    function esc(text) {
+        var d = document.createElement('div');
+        d.textContent = text || '';
+        return d.innerHTML;
+    }
+})();
+</script>
+</body>
+</html>
