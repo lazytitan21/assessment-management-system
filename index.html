@@ -1115,21 +1115,42 @@ function downloadTemplate() {
 function getCenterProfiles() { try { return JSON.parse(localStorage.getItem('centerProfiles') || '[]'); } catch { return []; } }
 function saveCenterProfiles(profiles) { localStorage.setItem('centerProfiles', JSON.stringify(profiles)); }
 
-function renderCenterProfiles() {
+async function renderCenterProfiles() {
     const profiles = getCenterProfiles();
     const el = document.getElementById('centerProfilesList');
     if (!profiles.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><p>No center profiles saved yet. Add one to get started.</p></div>'; return; }
-    el.innerHTML = profiles.map(p => `
-        <div class="profile-card">
+
+    // Load supervisors from Supabase to show assignments
+    let supervisors = [];
+    try {
+        const { data } = await _supabase.from('supervisors').select('full_name, email, center_id').order('full_name');
+        supervisors = data || [];
+    } catch (e) { /* ignore - just won't show supervisor badges */ }
+
+    // Build a map from supabaseCenterId -> supervisors
+    const supsByCenter = {};
+    supervisors.forEach(s => {
+        if (!supsByCenter[s.center_id]) supsByCenter[s.center_id] = [];
+        supsByCenter[s.center_id].push(s);
+    });
+
+    el.innerHTML = profiles.map(p => {
+        const assignedSups = p.supabaseCenterId ? (supsByCenter[p.supabaseCenterId] || []) : [];
+        const supBadges = assignedSups.length
+            ? assignedSups.map(s => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--primary-light);color:var(--primary);padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500;"><i class="fas fa-user-shield" style="font-size:10px;"></i>${esc(s.full_name)}</span>`).join(' ')
+            : '<span style="color:var(--text-muted);font-size:12px;font-style:italic;">No supervisor assigned</span>';
+        return `<div class="profile-card">
             <div class="profile-card-info">
                 <div class="profile-card-name"><i class="fas fa-building" style="color:var(--primary);margin-right:6px;"></i>${esc(p.profileName || p.centerName)}</div>
                 <div class="profile-card-meta">${esc(p.centerName)}${p.emirate?' &mdash; <strong>'+esc(p.emirate)+'</strong>':''} &mdash; ${p.labs.length} lab(s), Total capacity: ${p.labs.reduce((s,l)=>s+l.capacity,0)}${p.contact ? ' &mdash; Contact: '+esc(p.contact) : ''}</div>
+                <div style="margin-top:6px;">${supBadges}</div>
             </div>
             <div class="profile-card-actions">
                 <button class="btn btn-sm btn-outline" onclick="editProfile('${p.id}')"><i class="fas fa-edit"></i></button>
                 <button class="btn btn-sm btn-danger" onclick="deleteProfile('${p.id}')"><i class="fas fa-trash"></i></button>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 function openAddProfileModal() {
@@ -1165,7 +1186,9 @@ function saveProfile() {
     if (!labs.length) { showToast('Add at least one lab', 'warning'); return; }
     const profiles = getCenterProfiles();
     const editId = document.getElementById('editProfileId').value;
-    const profile = { id: editId || 'cp_'+Date.now(), profileName: pn, centerName: cn, emirate, mapsLink: document.getElementById('profileMapsLink').value.trim(), address: document.getElementById('profileAddress').value.trim(), contact: document.getElementById('profileContact').value.trim(), labs };
+    // Preserve existing supabaseCenterId when editing
+    const existingProfile = editId ? profiles.find(p => p.id === editId) : null;
+    const profile = { id: editId || 'cp_'+Date.now(), profileName: pn, centerName: cn, emirate, mapsLink: document.getElementById('profileMapsLink').value.trim(), address: document.getElementById('profileAddress').value.trim(), contact: document.getElementById('profileContact').value.trim(), labs, supabaseCenterId: existingProfile ? existingProfile.supabaseCenterId : null };
     if (editId) { const i = profiles.findIndex(p => p.id === editId); if (i >= 0) profiles[i] = profile; } else profiles.push(profile);
     saveCenterProfiles(profiles);
     renderCenterProfiles();
@@ -3042,16 +3065,22 @@ async function openSupervisorMgmt() {
         `<option value="${p.id}">${esc(p.profileName || p.centerName)} (${esc(p.emirate || 'No Emirate')}, ${p.labs.length} labs)</option>`
     ).join('');
 
+    // Build a profile lookup by supabaseCenterId for the supervisor list
+    const profileByCenterId = {};
+    centerProfiles.forEach(p => { if (p.supabaseCenterId) profileByCenterId[p.supabaseCenterId] = p; });
+
     const supListHtml = _adminSupervisors.length
         ? _adminSupervisors.map(s => {
             const initials = (s.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-            const ctr = s.centers ? s.centers.name : 'Unknown';
+            const matchedProfile = profileByCenterId[s.center_id];
+            const ctr = matchedProfile ? (matchedProfile.profileName || matchedProfile.centerName) : (s.centers ? s.centers.name : 'Unknown');
+            const ctrDetail = matchedProfile && matchedProfile.emirate ? ' (' + esc(matchedProfile.emirate) + ')' : '';
             return `<div class="sup-item">
                 <div class="sup-avatar">${esc(initials)}</div>
                 <div class="sup-info">
                     <div class="sup-name">${esc(s.full_name)}</div>
                     <div class="sup-email">${esc(s.email)}</div>
-                    <div class="sup-center-label"><i class="fas fa-building"></i> ${esc(ctr)}</div>
+                    <div class="sup-center-label"><i class="fas fa-building"></i> ${esc(ctr)}${ctrDetail}</div>
                 </div>
                 <button class="btn btn-sm" style="background:var(--danger-bg);color:var(--danger);border:1px solid rgba(239,68,68,0.2);" onclick="deleteSupervisorRow('${s.user_id}','${esc(s.full_name)}')"><i class="fas fa-trash"></i></button>
             </div>`;
@@ -3122,19 +3151,32 @@ async function handleAddSupInline(e) {
 
     try {
         // Resolve local center profile to a Supabase center row
-        const profile = getCenterProfiles().find(p => p.id === centerId);
+        const profiles = getCenterProfiles();
+        const profile = profiles.find(p => p.id === centerId);
         if (!profile) throw new Error('Selected center profile not found.');
-        let dbCenterId;
-        // Check if a center with this name already exists in Supabase
-        const { data: existingCenters } = await _supabase.from('centers').select('id').eq('name', profile.centerName).limit(1);
-        if (existingCenters && existingCenters.length > 0) {
-            dbCenterId = existingCenters[0].id;
-        } else {
-            // Create the center in Supabase
-            const { data: newCenter, error: centerErr } = await _supabase.from('centers').insert({ name: profile.centerName, location: profile.emirate || null }).select('id').single();
-            if (centerErr) throw new Error('Failed to create center in database: ' + centerErr.message);
-            dbCenterId = newCenter.id;
+        let dbCenterId = profile.supabaseCenterId || null;
+
+        // If we already have a saved Supabase center ID, verify it still exists
+        if (dbCenterId) {
+            const { data: check } = await _supabase.from('centers').select('id').eq('id', dbCenterId).limit(1);
+            if (!check || check.length === 0) dbCenterId = null;
         }
+
+        // If no saved ID, try matching by name or create new
+        if (!dbCenterId) {
+            const { data: existingCenters } = await _supabase.from('centers').select('id').eq('name', profile.centerName).limit(1);
+            if (existingCenters && existingCenters.length > 0) {
+                dbCenterId = existingCenters[0].id;
+            } else {
+                const { data: newCenter, error: centerErr } = await _supabase.from('centers').insert({ name: profile.centerName, location: profile.emirate || null }).select('id').single();
+                if (centerErr) throw new Error('Failed to create center in database: ' + centerErr.message);
+                dbCenterId = newCenter.id;
+            }
+        }
+
+        // Persist the Supabase center ID back to the local profile
+        profile.supabaseCenterId = dbCenterId;
+        saveCenterProfiles(profiles);
 
         const { data: signupData, error: signupErr } = await _signupClient.auth.signUp({ email, password, options: { data: { full_name: name } } });
         if (signupErr) throw signupErr;
@@ -3147,8 +3189,8 @@ async function handleAddSupInline(e) {
         successEl.style.display = '';
         showToast('Supervisor created: ' + name, 'success');
 
-        // Refresh modal
-        setTimeout(() => openSupervisorMgmt(), 1500);
+        // Refresh modal and center profiles
+        setTimeout(() => { openSupervisorMgmt(); renderCenterProfiles(); }, 1500);
     } catch (err) {
         errorEl.textContent = err.message || 'Failed to create supervisor.';
         errorEl.style.display = '';
@@ -3166,6 +3208,7 @@ async function deleteSupervisorRow(userId, name) {
         if (error) throw error;
         showToast('Supervisor removed: ' + name, 'success');
         openSupervisorMgmt();
+        renderCenterProfiles();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
