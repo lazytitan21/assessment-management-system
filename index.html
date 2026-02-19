@@ -3036,9 +3036,10 @@ async function openSupervisorMgmt() {
         return;
     }
 
-    // Build modal HTML
-    const centerOptions = _adminCenters.map(c =>
-        `<option value="${c.id}">${esc(c.name)}${c.location ? ' (' + esc(c.location) + ')' : ''}</option>`
+    // Build center dropdown from admin's local center profiles
+    const centerProfiles = getCenterProfiles();
+    const centerOptions = centerProfiles.map(p =>
+        `<option value="${p.id}">${esc(p.profileName || p.centerName)} (${esc(p.emirate || 'No Emirate')}, ${p.labs.length} labs)</option>`
     ).join('');
 
     const supListHtml = _adminSupervisors.length
@@ -3061,7 +3062,7 @@ async function openSupervisorMgmt() {
     <div id="sup-mgmt-modal" class="sup-modal-overlay" onclick="if(event.target===this)this.classList.add('hidden')">
         <div class="sup-modal">
             <h2><i class="fas fa-user-shield"></i> Manage Supervisors
-                <span style="margin-left:auto;font-size:13px;color:var(--text-muted);font-weight:400;">${_adminSupervisors.length} supervisor(s) · ${_adminCenters.length} center(s)</span>
+                <span style="margin-left:auto;font-size:13px;color:var(--text-muted);font-weight:400;">${_adminSupervisors.length} supervisor(s) · ${centerProfiles.length} center profile(s)</span>
             </h2>
 
             <div id="sup-list-section" style="max-height:250px;overflow-y:auto;margin-bottom:20px;">
@@ -3134,11 +3135,26 @@ async function handleAddSupInline(e) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
 
     try {
+        // Resolve local center profile to a Supabase center row
+        const profile = getCenterProfiles().find(p => p.id === centerId);
+        if (!profile) throw new Error('Selected center profile not found.');
+        let dbCenterId;
+        // Check if a center with this name already exists in Supabase
+        const { data: existingCenters } = await _supabase.from('centers').select('id').eq('name', profile.centerName).limit(1);
+        if (existingCenters && existingCenters.length > 0) {
+            dbCenterId = existingCenters[0].id;
+        } else {
+            // Create the center in Supabase
+            const { data: newCenter, error: centerErr } = await _supabase.from('centers').insert({ name: profile.centerName, location: profile.emirate || null }).select('id').single();
+            if (centerErr) throw new Error('Failed to create center in database: ' + centerErr.message);
+            dbCenterId = newCenter.id;
+        }
+
         const { data: signupData, error: signupErr } = await _signupClient.auth.signUp({ email, password, options: { data: { full_name: name } } });
         if (signupErr) throw signupErr;
         if (!signupData.user?.id) throw new Error('User creation failed. Make sure "Confirm email" is turned OFF in Supabase Auth settings.');
 
-        const { error: insertErr } = await _supabase.from('supervisors').insert({ user_id: signupData.user.id, center_id: centerId, full_name: name, email });
+        const { error: insertErr } = await _supabase.from('supervisors').insert({ user_id: signupData.user.id, center_id: dbCenterId, full_name: name, email });
         if (insertErr) throw new Error('Auth user created but supervisor row failed: ' + insertErr.message);
 
         successEl.textContent = 'Supervisor "' + name + '" created! They can now log in at supervisor.html';
