@@ -3092,19 +3092,6 @@ async function openSupervisorMgmt() {
                 </form>
             </div>
 
-            <div style="border-top:1px solid var(--border-color);padding-top:16px;margin-top:20px;">
-                <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;"><i class="fas fa-building" style="color:var(--info);margin-right:6px;"></i>Add New Center</h3>
-                <form id="add-center-form-inline">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div class="form-group"><label class="form-label">Center Name</label><input type="text" class="form-input" id="center-name-i" required placeholder="e.g. Engineering Building"></div>
-                        <div class="form-group"><label class="form-label">Location (optional)</label><input type="text" class="form-input" id="center-loc-i" placeholder="e.g. Abu Dhabi, UAE"></div>
-                    </div>
-                    <div id="add-center-error-i" class="error-msg" style="display:none;margin-top:12px;background:var(--danger-bg);padding:10px 14px;border-radius:var(--radius-sm);color:var(--danger);font-size:13px;text-align:center;border:1px solid rgba(239,68,68,0.2);"></div>
-                    <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">
-                        <button type="submit" id="add-center-btn-i" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Create Center</button>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>`;
 
@@ -3112,7 +3099,6 @@ async function openSupervisorMgmt() {
 
     // Bind form events
     document.getElementById('add-sup-form-inline').addEventListener('submit', handleAddSupInline);
-    document.getElementById('add-center-form-inline').addEventListener('submit', handleAddCenterInline);
 }
 
 async function handleAddSupInline(e) {
@@ -3172,32 +3158,6 @@ async function handleAddSupInline(e) {
     }
 }
 
-async function handleAddCenterInline(e) {
-    e.preventDefault();
-    const name = document.getElementById('center-name-i').value.trim();
-    const location = document.getElementById('center-loc-i').value.trim();
-    const errorEl = document.getElementById('add-center-error-i');
-    const btn = document.getElementById('add-center-btn-i');
-
-    errorEl.style.display = 'none';
-    if (!name) { errorEl.textContent = 'Center name is required.'; errorEl.style.display = ''; return; }
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
-
-    try {
-        const { error } = await _supabase.from('centers').insert({ name, location: location || null });
-        if (error) throw error;
-        showToast('Center created: ' + name, 'success');
-        setTimeout(() => openSupervisorMgmt(), 800);
-    } catch (err) {
-        errorEl.textContent = err.message || 'Failed to create center.';
-        errorEl.style.display = '';
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-plus"></i> Create Center';
-    }
-}
 
 async function deleteSupervisorRow(userId, name) {
     if (!confirm('Remove supervisor "' + name + '"? They will lose access.')) return;
