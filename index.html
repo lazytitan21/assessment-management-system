@@ -588,6 +588,23 @@
 
     <!-- ===== PAGE 5: EXPORT & REPORTS ===== -->
     <section class="page" id="page-5">
+        <!-- SYNC TO DATABASE -->
+        <div class="card" style="border:2px solid var(--success);background:linear-gradient(135deg,var(--success-bg) 0%,var(--bg-card) 100%);">
+            <div class="card-header">
+                <div class="card-icon success"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div><div class="card-title">Save Distribution to Database</div><div class="card-description">Push examinees and their attendance codes to Supabase so supervisors can take attendance via QR scanning</div></div>
+            </div>
+            <div id="syncStatus" style="display:none;padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;"></div>
+            <div class="btn-group">
+                <button class="btn btn-success btn-lg" onclick="syncToDatabase()"><i class="fas fa-cloud-upload-alt"></i> Sync to Database</button>
+                <button class="btn btn-outline btn-sm" onclick="checkSyncStatus()"><i class="fas fa-info-circle"></i> Check Status</button>
+            </div>
+            <div style="margin-top:12px;padding:10px 14px;background:var(--info-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);border:1px solid rgba(59,130,246,0.2);">
+                <i class="fas fa-info-circle" style="color:var(--info);margin-right:4px;"></i>
+                <strong>Important:</strong> You must sync to the database before generating admission cards. The QR codes on admission cards are attendance codes that supervisors scan to register attendance.
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <div class="card-icon warning"><i class="fas fa-download"></i></div>
@@ -624,7 +641,7 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-icon danger"><i class="fas fa-id-card"></i></div>
-                <div><div class="card-title">Examinee Admission Cards</div><div class="card-description">Generate admission slips with QR codes linking to the center on Google Maps</div></div>
+                <div><div class="card-title">Examinee Admission Cards</div><div class="card-description">Generate admission cards with attendance QR codes for supervisor scanning</div></div>
             </div>
             <div class="btn-group">
                 <button class="btn btn-warning" onclick="generateIndividualAdmissionCards()"><i class="fas fa-download"></i> Individual Cards (saved one by one)</button>
@@ -1632,6 +1649,9 @@ function runDistribution() {
     state.distribution = {totalExaminees:examinees.length, totalLabs:allLabs.length, rounds, capacityPerRound, dailyCapacity, daysNeeded, summary, allLabs};
     state.assignments = assignments;
 
+    // Generate unique attendance codes for each assignment (used in admission card QR codes)
+    state.assignments.forEach(a => { a._attendanceCode = crypto.randomUUID(); });
+
     // Conflict detection (based on Email)
     state.conflicts = [];
     if(doConflict){
@@ -2366,7 +2386,7 @@ function buildCardHtml(a) {
     const jf=findField(['Job Category','JobCategory','Job']);
     const emlf=findField(['Email','email','E-mail']);
     let qrUrl='';
-    if(a._centerLink){try{const qr=qrcode(0,'M');qr.addData(a._centerLink);qr.make();qrUrl=qr.createDataURL(3,0);}catch(e){}}
+    if(a._attendanceCode){try{const qr=qrcode(0,'M');qr.addData(a._attendanceCode);qr.make();qrUrl=qr.createDataURL(3,0);}catch(e){}}
     return `<div style="border:2px solid #4f46e5;border-radius:12px;padding:16px;background:white;">
         <div style="text-align:center;margin-bottom:10px;">
             <div style="font-size:14px;font-weight:800;color:#4f46e5;">${esc(state.examName)}</div>
@@ -2388,7 +2408,7 @@ function buildCardHtml(a) {
                 <div><strong>Lab:</strong> ${esc(a._lab)}</div>
                 <div><strong>Seat No:</strong> ${a._seatNo}</div>
             </div>
-            ${qrUrl?`<div style="text-align:center;"><img src="${qrUrl}" style="width:70px;height:70px;"><div style="font-size:8px;color:#9ca3af;margin-top:2px;">Scan for<br>Location</div></div>`:''}
+            ${qrUrl?`<div style="text-align:center;"><img src="${qrUrl}" style="width:70px;height:70px;"><div style="font-size:8px;color:#9ca3af;margin-top:2px;">Scan for<br>Attendance</div></div>`:''}
         </div>
         <div style="text-align:center;margin-top:8px;font-size:8px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:6px;">Please arrive 15 minutes before the exam</div>
     </div>`;
@@ -2740,6 +2760,172 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) { console.warn('Migration failed:', e); }
     await renderSavedRuns();
 });
+
+// ============================================================
+// SYNC DISTRIBUTION TO DATABASE
+// ============================================================
+async function syncToDatabase() {
+    if(!state.assignments.length) {
+        showToast('Run distribution first','warning');
+        return;
+    }
+
+    // Ensure attendance codes exist
+    state.assignments.forEach(a => {
+        if(!a._attendanceCode) a._attendanceCode = crypto.randomUUID();
+    });
+
+    if(!confirm('This will upload ' + state.assignments.length + ' examinee records to the database.\n\nSupervisors assigned to these centers will be able to see the examinees and take attendance.\n\nExisting examinees in these centers will be replaced.\n\nContinue?')) return;
+
+    showProgress('Syncing to Database...', 'Preparing centers...');
+    const statusEl = document.getElementById('syncStatus');
+
+    try {
+        // Step 1: Find/Create centers in Supabase
+        const uniqueCenters = [...new Set(state.assignments.map(a => a._center))];
+        const centerMap = {}; // centerName -> centerId (UUID)
+
+        for(const cn of uniqueCenters) {
+            updateProgress('Syncing to Database...', 'Setting up center: ' + cn);
+
+            // Try to find existing center by name
+            const { data: existing, error: findErr } = await _supabase
+                .from('centers')
+                .select('id, name')
+                .eq('name', cn)
+                .maybeSingle();
+
+            if(findErr) throw new Error('Error looking up center "' + cn + '": ' + findErr.message);
+
+            if(existing) {
+                centerMap[cn] = existing.id;
+            } else {
+                // Create new center
+                const emirate = state.assignments.find(a => a._center === cn)?._emirate || null;
+                const { data: newCenter, error: createErr } = await _supabase
+                    .from('centers')
+                    .insert({ name: cn, location: emirate })
+                    .select('id')
+                    .single();
+
+                if(createErr) throw new Error('Error creating center "' + cn + '": ' + createErr.message);
+                centerMap[cn] = newCenter.id;
+            }
+        }
+
+        updateProgress('Syncing to Database...', 'Clearing old examinees...');
+
+        // Step 2: Delete existing examinees for these centers (avoid duplicates on re-sync)
+        for(const centerId of Object.values(centerMap)) {
+            const { error: delErr } = await _supabase.from('examinees').delete().eq('center_id', centerId);
+            if(delErr) console.warn('Could not clear old examinees for center:', delErr.message);
+        }
+
+        updateProgress('Syncing to Database...', 'Uploading examinees...');
+
+        // Step 3: Prepare examinee records
+        const nf = findField(['Name_En','Name_Ar','Name','name','Full Name']) || state.headers[0];
+        const idf = findField(['Employee ID','EmployeeID','ID','national_id','National ID']);
+
+        const records = state.assignments.map(a => ({
+            center_id: centerMap[a._center],
+            full_name: String(a[nf] || 'Unknown'),
+            national_id: idf ? String(a[idf] || '') : null,
+            exam_session: 'Day ' + a._day + ' R' + a._round + (a._date ? ' (' + a._date + ')' : '') + ' | ' + a._time + ' | ' + a._lab + ' | Seat ' + a._seatNo,
+            attendance_code: a._attendanceCode
+        }));
+
+        // Step 4: Insert in batches of 500
+        const batchSize = 500;
+        let inserted = 0;
+        for(let i = 0; i < records.length; i += batchSize) {
+            const batch = records.slice(i, i + batchSize);
+            const { error: insertErr } = await _supabase.from('examinees').insert(batch);
+            if(insertErr) throw new Error('Error inserting examinees (batch ' + Math.floor(i/batchSize+1) + '): ' + insertErr.message);
+            inserted += batch.length;
+            updateProgress('Syncing to Database...', inserted + ' / ' + records.length + ' examinees uploaded');
+        }
+
+        hideProgress();
+
+        // Show success status
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'var(--success-bg)';
+        statusEl.style.color = 'var(--success)';
+        statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> <strong>Synced successfully!</strong> ' +
+            records.length + ' examinees uploaded to ' + uniqueCenters.length + ' center(s). ' +
+            'Synced at ' + new Date().toLocaleString();
+
+        showToast('Database synced! ' + records.length + ' examinees across ' + uniqueCenters.length + ' center(s)', 'success');
+
+        // Auto-save after sync
+        autoSaveRun();
+
+    } catch(err) {
+        hideProgress();
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'var(--danger-bg)';
+        statusEl.style.color = 'var(--danger)';
+        statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+        statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> <strong>Sync failed:</strong> ' + esc(err.message);
+        showToast('Sync failed: ' + err.message, 'error');
+        console.error('Sync error:', err);
+    }
+}
+
+async function checkSyncStatus() {
+    if(!state.assignments.length) {
+        showToast('No distribution data. Run distribution first.', 'warning');
+        return;
+    }
+    const statusEl = document.getElementById('syncStatus');
+    const hasAttCodes = state.assignments.some(a => a._attendanceCode);
+
+    try {
+        // Check how many examinees are in DB for the centers used
+        const uniqueCenters = [...new Set(state.assignments.map(a => a._center))];
+        let totalInDb = 0;
+        for(const cn of uniqueCenters) {
+            const { data: center } = await _supabase
+                .from('centers')
+                .select('id')
+                .eq('name', cn)
+                .maybeSingle();
+            if(center) {
+                const { count } = await _supabase
+                    .from('examinees')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('center_id', center.id);
+                totalInDb += count || 0;
+            }
+        }
+
+        statusEl.style.display = 'block';
+        if(totalInDb > 0 && totalInDb === state.assignments.length) {
+            statusEl.style.background = 'var(--success-bg)';
+            statusEl.style.color = 'var(--success)';
+            statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> <strong>In sync.</strong> Database has ' + totalInDb + ' examinees matching the current distribution of ' + state.assignments.length + '.';
+        } else if(totalInDb > 0) {
+            statusEl.style.background = 'var(--warning-bg)';
+            statusEl.style.color = 'var(--warning)';
+            statusEl.style.border = '1px solid rgba(245,158,11,0.3)';
+            statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>Out of sync.</strong> Database has ' + totalInDb + ' examinees but current distribution has ' + state.assignments.length + '. Click "Sync to Database" to update.';
+        } else {
+            statusEl.style.background = 'var(--danger-bg)';
+            statusEl.style.color = 'var(--danger)';
+            statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+            statusEl.innerHTML = '<i class="fas fa-times-circle"></i> <strong>Not synced.</strong> No examinees found in the database for these centers. Click "Sync to Database" to upload.';
+        }
+    } catch(e) {
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'var(--danger-bg)';
+        statusEl.style.color = 'var(--danger)';
+        statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+        statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Could not check status: ' + esc(e.message);
+    }
+}
 
 // ============================================================
 // ADMIN AUTH — Login gate + Supervisor management

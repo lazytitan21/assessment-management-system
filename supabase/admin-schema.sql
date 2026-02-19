@@ -107,10 +107,46 @@ CREATE POLICY "admins_read_all_examinees"
     );
 
 -- ================================
+-- ADMIN POLICIES — Admins can INSERT examinees
+-- ================================
+CREATE POLICY "admins_insert_examinees"
+    ON examinees FOR INSERT
+    WITH CHECK (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
+-- ADMIN POLICIES — Admins can UPDATE examinees
+-- ================================
+CREATE POLICY "admins_update_examinees"
+    ON examinees FOR UPDATE
+    USING (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
+-- ADMIN POLICIES — Admins can DELETE examinees
+-- ================================
+CREATE POLICY "admins_delete_examinees"
+    ON examinees FOR DELETE
+    USING (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
 -- ADMIN POLICIES — Admins can read ALL attendance records
 -- ================================
 CREATE POLICY "admins_read_all_attendance"
     ON attendance_records FOR SELECT
+    USING (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
+-- ADMIN POLICIES — Admins can DELETE attendance records
+-- ================================
+CREATE POLICY "admins_delete_attendance"
+    ON attendance_records FOR DELETE
     USING (
         auth.uid() IN (SELECT user_id FROM admins)
     );

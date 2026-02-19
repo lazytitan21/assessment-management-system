@@ -104,7 +104,7 @@
     App.handleSignOut = async function () {
         if (typeof App.stopScanner === 'function') App.stopScanner();
         await App.signOut();
-        window.location.href = 'index.html';
+        showLogin();
     };
 
     // --------------- Initialize dashboard data ---------------
@@ -154,21 +154,20 @@
                 await initDashboard();
                 showApp();
             } else {
-                // No session — redirect to unified login at index.html
-                window.location.href = 'index.html';
+                showLogin();
                 return;
             }
         } catch (err) {
             console.warn('Session restore failed:', err);
-            // If profile load fails (e.g. admin on supervisor page), redirect
-            window.location.href = 'index.html';
+            await App.supabase.auth.signOut();
+            showLogin();
             return;
         }
 
         // Listen for auth state changes
         App.supabase.auth.onAuthStateChange(function (event) {
             if (event === 'SIGNED_OUT') {
-                window.location.href = 'index.html';
+                showLogin();
             }
         });
     }
