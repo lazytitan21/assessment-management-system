@@ -4,8 +4,10 @@
 
 A static web app (HTML/CSS/JS) that provides:
 
-1. **Admin tool** (`index.html`) — the admin logs in to distribute examinees across centers/labs/rounds, manage supervisors, and prepare everything for exam day  
-2. **Supervisor Portal** (`supervisor.html`) — each center supervisor logs in to:
+1. **Unified login** (`index.html`) — one sign-in page for everyone  
+   - **Admin** → gets the full distribution tool: create exams, manage centers/supervisors, configure labs & rounds  
+   - **Supervisor** → automatically redirected to the supervisor portal  
+2. **Supervisor Portal** (`supervisor.html`) — each center supervisor can:
    - View their center's examinees  
    - Scan QR codes to take attendance  
    - See attendance reports  
@@ -250,16 +252,16 @@ Go back to **Supabase → Authentication → URL Configuration** and:
 
 ## Step 4: Test Everything
 
-### Test the admin tool
-- Visit `https://YOUR-APP.onrender.com/` → you should see a login screen
-- Sign in with the admin email + password from Step 2E
-- After login, the full distribution tool loads
-- Click **👥 Supervisors** in the header to add/remove supervisors
-- Use the tool to configure centers, labs, rounds, and distribute examinees
+### Test the unified login
+- Visit `https://YOUR-APP.onrender.com/` → you should see a sign-in screen
+- **Sign in as admin** (email/password from Step 2E) → the distribution tool loads
+  - Click **👥 Supervisors** in the header to manage supervisors
+  - Use the tool to configure centers, labs, rounds, and distribute examinees
+- **Sign in as supervisor** (email/password created in Step 2F) → automatically redirected to the supervisor portal
 
 ### Test the supervisor portal
 - Visit `https://YOUR-APP.onrender.com/supervisor.html`
-- Sign in with the email + password you created via the Admin Portal (Step 2F)
+- Sign in with the email + password you created in Step 2F
 - You should see:
   - Your center name in the header
   - Examinee list for your center
