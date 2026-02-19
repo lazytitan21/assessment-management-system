@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: assessment-management-system
+    runtime: static
+    buildCommand: echo "Static site — no build step"
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
