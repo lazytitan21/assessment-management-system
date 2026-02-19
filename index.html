@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assessment Management System</title>
+    <!-- Supabase JS v2 (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="js/config.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -263,9 +266,119 @@
             .distribution-grid { grid-template-columns: 1fr; }
             .dnd-container { grid-template-columns: 1fr; }
         }
+        /* ---- Admin Login Overlay ---- */
+        #admin-login-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4f46e5 100%);
+            padding: 20px;
+        }
+        #admin-login-overlay.hidden { display: none; }
+        .admin-login-card {
+            background: var(--bg-card); border-radius: var(--radius-lg); padding: 40px;
+            width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .admin-login-card .login-header { text-align: center; margin-bottom: 32px; }
+        .admin-login-card .login-logo {
+            width: 64px; height: 64px; margin: 0 auto 16px;
+            background: var(--primary-bg); border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; color: var(--primary);
+        }
+        .admin-login-card .login-header h1 { font-size: 24px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+        .admin-login-card .login-header p { font-size: 14px; color: var(--text-secondary); }
+        .admin-login-card .error-msg {
+            padding: 10px 14px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.2);
+            border-radius: var(--radius-sm); color: var(--danger); font-size: 13px;
+            margin-bottom: 12px; text-align: center;
+        }
+        .admin-login-card .form-group { margin-bottom: 16px; }
+        .admin-login-card .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .admin-login-card .form-group input {
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); font-size: 14px; font-family: inherit;
+            background: var(--bg-secondary); color: var(--text-primary); outline: none;
+        }
+        .admin-login-card .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); }
+        .admin-login-card .btn-login {
+            width: 100%; padding: 14px 28px; border: none; border-radius: var(--radius-sm);
+            font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer;
+            background: var(--primary); color: white; display: flex; align-items: center;
+            justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(79,70,229,0.3);
+        }
+        .admin-login-card .btn-login:hover { background: var(--primary-dark); }
+        .admin-login-card .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ---- Supervisor Management Modal ---- */
+        .sup-modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1500; padding: 20px;
+        }
+        .sup-modal-overlay.hidden { display: none; }
+        .sup-modal {
+            background: var(--bg-card); border-radius: var(--radius-lg);
+            padding: 32px; width: 100%; max-width: 700px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .sup-modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .sup-modal h2 i { color: var(--primary); }
+        .sup-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); margin-bottom: 8px; background: var(--bg-card);
+        }
+        .sup-item:hover { box-shadow: var(--shadow-md); }
+        .sup-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--primary-bg); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; flex-shrink: 0;
+        }
+        .sup-info { flex: 1; min-width: 0; }
+        .sup-name { font-weight: 700; font-size: 14px; }
+        .sup-email { font-size: 12px; color: var(--text-secondary); }
+        .sup-center-label { font-size: 11px; color: var(--text-muted); }
+        .sup-modal .success-msg {
+            padding: 10px 14px; background: var(--success-bg); border: 1px solid rgba(16,185,129,0.2);
+            border-radius: var(--radius-sm); color: var(--success); font-size: 13px;
+            margin-bottom: 12px; text-align: center;
+        }
+        .password-field { position: relative; }
+        .password-field input { padding-right: 42px; }
+        .password-toggle {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px;
+        }
     </style>
 </head>
 <body>
+
+<!-- ==================== ADMIN LOGIN OVERLAY ==================== -->
+<div id="admin-login-overlay">
+    <div class="admin-login-card">
+        <div class="login-header">
+            <div class="login-logo"><i class="fas fa-shield-alt"></i></div>
+            <h1>Admin Login</h1>
+            <p>Sign in to manage assessments</p>
+        </div>
+        <form id="admin-login-form" autocomplete="on">
+            <div class="form-group">
+                <label for="admin-email">Email Address</label>
+                <input type="email" id="admin-email" required placeholder="admin@example.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="admin-password">Password</label>
+                <input type="password" id="admin-password" required placeholder="Enter your password" autocomplete="current-password">
+            </div>
+            <div id="admin-login-error" class="error-msg" style="display:none"></div>
+            <button type="submit" id="admin-login-btn" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+        </form>
+    </div>
+</div>
 
 <div class="toast-container" id="toastContainer"></div>
 <div class="progress-overlay" id="progressOverlay"><div class="progress-box"><i class="fas fa-spinner"></i><p id="progressText">Generating...</p><div class="progress-sub" id="progressSub"></div></div></div>
@@ -281,8 +394,8 @@
             </div>
         </div>
         <div class="header-actions">
-            <a href="admin.html" class="header-btn" title="Open Admin Portal" style="background:#312e81;color:#fff;text-decoration:none;"><i class="fas fa-shield-alt"></i> Admin Portal</a>
-            <a href="supervisor.html" class="header-btn" title="Open Supervisor Portal" style="background:var(--success);color:#fff;text-decoration:none;"><i class="fas fa-user-shield"></i> Supervisor Portal</a>
+            <button class="header-btn" onclick="openSupervisorMgmt()" title="Manage supervisors and centers" style="background:#312e81;color:#fff;"><i class="fas fa-user-shield"></i> Supervisors</button>
+            <button class="header-btn" onclick="adminSignOut()" title="Sign out" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.2);"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
             <button class="header-btn" onclick="resetApp()" title="Clear everything and start fresh" style="background:var(--danger);color:#fff;"><i class="fas fa-redo"></i> Reset</button>
             <button class="header-btn" onclick="openAttendanceModal()" title="Record attendance per center" style="background:var(--info);color:#fff;"><i class="fas fa-clipboard-check"></i> Attendance</button>
             <button class="header-btn" onclick="openMailMergeModal()" title="Send admission cards via email" style="background:var(--warning);color:#fff;"><i class="fas fa-envelope"></i> Mail Merge</button>
@@ -2608,6 +2721,9 @@ function esc(text) { const d=document.createElement('div');d.textContent=text;re
 
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- Admin Auth Gate ---
+    await adminAuthGate();
+
     renderCenterProfiles();
     autoGenerateRoundTimings();
     // Migrate old localStorage runs to IndexedDB
@@ -2624,6 +2740,255 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) { console.warn('Migration failed:', e); }
     await renderSavedRuns();
 });
+
+// ============================================================
+// ADMIN AUTH — Login gate + Supervisor management
+// ============================================================
+const _supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+const _signupClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+let _adminProfile = null;
+let _adminCenters = [];
+let _adminSupervisors = [];
+
+async function adminAuthGate() {
+    const loginOverlay = document.getElementById('admin-login-overlay');
+    const loginForm = document.getElementById('admin-login-form');
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('admin-email').value;
+        const password = document.getElementById('admin-password').value;
+        const errorEl = document.getElementById('admin-login-error');
+        const btn = document.getElementById('admin-login-btn');
+
+        errorEl.style.display = 'none';
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in…';
+
+        try {
+            const { data, error } = await _supabase.auth.signInWithPassword({ email: email.trim(), password });
+            if (error) throw error;
+
+            const adminCheck = await _supabase.from('admins').select('*').eq('user_id', data.user.id).single();
+            if (adminCheck.error || !adminCheck.data) {
+                await _supabase.auth.signOut();
+                throw new Error('Access denied. This account is not an admin.');
+            }
+
+            _adminProfile = adminCheck.data;
+            loginOverlay.classList.add('hidden');
+            showToast('Welcome, ' + _adminProfile.full_name + '!', 'success');
+        } catch (err) {
+            errorEl.textContent = err.message || 'Sign-in failed.';
+            errorEl.style.display = '';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+        }
+    });
+
+    // Check existing session
+    try {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session && session.user) {
+            const adminCheck = await _supabase.from('admins').select('*').eq('user_id', session.user.id).single();
+            if (adminCheck.data) {
+                _adminProfile = adminCheck.data;
+                loginOverlay.classList.add('hidden');
+                return;
+            }
+        }
+    } catch (e) { console.warn('Session check failed:', e); }
+
+    // Show login screen
+    loginOverlay.classList.remove('hidden');
+}
+
+async function adminSignOut() {
+    await _supabase.auth.signOut();
+    _adminProfile = null;
+    document.getElementById('admin-login-overlay').classList.remove('hidden');
+    showToast('Signed out.', 'info');
+}
+
+// ================= SUPERVISOR MANAGEMENT =================
+async function openSupervisorMgmt() {
+    // Remove any existing modal
+    const existing = document.getElementById('sup-mgmt-modal');
+    if (existing) existing.remove();
+
+    // Load data
+    try {
+        const [centersRes, supsRes] = await Promise.all([
+            _supabase.from('centers').select('*').order('name'),
+            _supabase.from('supervisors').select('*, centers(name, location)').order('full_name')
+        ]);
+        _adminCenters = centersRes.data || [];
+        _adminSupervisors = supsRes.data || [];
+    } catch (e) {
+        showToast('Error loading data: ' + e.message, 'error');
+        return;
+    }
+
+    // Build modal HTML
+    const centerOptions = _adminCenters.map(c =>
+        `<option value="${c.id}">${esc(c.name)}${c.location ? ' (' + esc(c.location) + ')' : ''}</option>`
+    ).join('');
+
+    const supListHtml = _adminSupervisors.length
+        ? _adminSupervisors.map(s => {
+            const initials = (s.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+            const ctr = s.centers ? s.centers.name : 'Unknown';
+            return `<div class="sup-item">
+                <div class="sup-avatar">${esc(initials)}</div>
+                <div class="sup-info">
+                    <div class="sup-name">${esc(s.full_name)}</div>
+                    <div class="sup-email">${esc(s.email)}</div>
+                    <div class="sup-center-label"><i class="fas fa-building"></i> ${esc(ctr)}</div>
+                </div>
+                <button class="btn btn-sm" style="background:var(--danger-bg);color:var(--danger);border:1px solid rgba(239,68,68,0.2);" onclick="deleteSupervisorRow('${s.user_id}','${esc(s.full_name)}')"><i class="fas fa-trash"></i></button>
+            </div>`;
+        }).join('')
+        : '<div style="padding:20px;text-align:center;color:var(--text-muted);"><i class="fas fa-user-shield" style="font-size:32px;opacity:0.3;display:block;margin-bottom:8px;"></i>No supervisors yet. Add one below.</div>';
+
+    const modalHtml = `
+    <div id="sup-mgmt-modal" class="sup-modal-overlay" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="sup-modal">
+            <h2><i class="fas fa-user-shield"></i> Manage Supervisors
+                <span style="margin-left:auto;font-size:13px;color:var(--text-muted);font-weight:400;">${_adminSupervisors.length} supervisor(s) · ${_adminCenters.length} center(s)</span>
+            </h2>
+
+            <div id="sup-list-section" style="max-height:250px;overflow-y:auto;margin-bottom:20px;">
+                ${supListHtml}
+            </div>
+
+            <div style="border-top:1px solid var(--border-color);padding-top:20px;">
+                <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;"><i class="fas fa-user-plus" style="color:var(--primary);margin-right:6px;"></i>Add New Supervisor</h3>
+                <form id="add-sup-form-inline">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="sup-name-i" required placeholder="e.g. Ahmed Al Supervisor"></div>
+                        <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="sup-email-i" required placeholder="supervisor@example.com"></div>
+                        <div class="form-group"><label class="form-label">Password (min 6 chars)</label>
+                            <div class="password-field"><input type="password" class="form-input" id="sup-pass-i" required minlength="6" placeholder="Choose a password">
+                            <button type="button" class="password-toggle" onclick="const inp=document.getElementById('sup-pass-i');const ic=this.querySelector('i');if(inp.type==='password'){inp.type='text';ic.className='fas fa-eye-slash';}else{inp.type='password';ic.className='fas fa-eye';}"><i class="fas fa-eye"></i></button></div>
+                        </div>
+                        <div class="form-group"><label class="form-label">Assign to Center</label>
+                            <select class="form-input" id="sup-center-i" required><option value="">— Select center —</option>${centerOptions}</select>
+                        </div>
+                    </div>
+                    <div id="add-sup-error-i" class="error-msg" style="display:none;margin-top:12px;background:var(--danger-bg);padding:10px 14px;border-radius:var(--radius-sm);color:var(--danger);font-size:13px;text-align:center;border:1px solid rgba(239,68,68,0.2);"></div>
+                    <div id="add-sup-success-i" class="success-msg" style="display:none;margin-top:12px;"></div>
+                    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+                        <button type="button" class="btn btn-ghost" onclick="document.getElementById('sup-mgmt-modal').classList.add('hidden')">Close</button>
+                        <button type="submit" id="add-sup-btn-i" class="btn btn-primary"><i class="fas fa-user-plus"></i> Create Supervisor</button>
+                    </div>
+                </form>
+            </div>
+
+            <div style="border-top:1px solid var(--border-color);padding-top:16px;margin-top:20px;">
+                <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;"><i class="fas fa-building" style="color:var(--info);margin-right:6px;"></i>Add New Center</h3>
+                <form id="add-center-form-inline">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Center Name</label><input type="text" class="form-input" id="center-name-i" required placeholder="e.g. Engineering Building"></div>
+                        <div class="form-group"><label class="form-label">Location (optional)</label><input type="text" class="form-input" id="center-loc-i" placeholder="e.g. Abu Dhabi, UAE"></div>
+                    </div>
+                    <div id="add-center-error-i" class="error-msg" style="display:none;margin-top:12px;background:var(--danger-bg);padding:10px 14px;border-radius:var(--radius-sm);color:var(--danger);font-size:13px;text-align:center;border:1px solid rgba(239,68,68,0.2);"></div>
+                    <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">
+                        <button type="submit" id="add-center-btn-i" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Create Center</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Bind form events
+    document.getElementById('add-sup-form-inline').addEventListener('submit', handleAddSupInline);
+    document.getElementById('add-center-form-inline').addEventListener('submit', handleAddCenterInline);
+}
+
+async function handleAddSupInline(e) {
+    e.preventDefault();
+    const name = document.getElementById('sup-name-i').value.trim();
+    const email = document.getElementById('sup-email-i').value.trim();
+    const password = document.getElementById('sup-pass-i').value;
+    const centerId = document.getElementById('sup-center-i').value;
+    const errorEl = document.getElementById('add-sup-error-i');
+    const successEl = document.getElementById('add-sup-success-i');
+    const btn = document.getElementById('add-sup-btn-i');
+
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    if (!name || !email || !password || !centerId) { errorEl.textContent = 'All fields are required.'; errorEl.style.display = ''; return; }
+    if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; errorEl.style.display = ''; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
+
+    try {
+        const { data: signupData, error: signupErr } = await _signupClient.auth.signUp({ email, password, options: { data: { full_name: name } } });
+        if (signupErr) throw signupErr;
+        if (!signupData.user?.id) throw new Error('User creation failed. Make sure "Confirm email" is turned OFF in Supabase Auth settings.');
+
+        const { error: insertErr } = await _supabase.from('supervisors').insert({ user_id: signupData.user.id, center_id: centerId, full_name: name, email });
+        if (insertErr) throw new Error('Auth user created but supervisor row failed: ' + insertErr.message);
+
+        successEl.textContent = 'Supervisor "' + name + '" created! They can now log in at supervisor.html';
+        successEl.style.display = '';
+        showToast('Supervisor created: ' + name, 'success');
+
+        // Refresh modal
+        setTimeout(() => openSupervisorMgmt(), 1500);
+    } catch (err) {
+        errorEl.textContent = err.message || 'Failed to create supervisor.';
+        errorEl.style.display = '';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Supervisor';
+    }
+}
+
+async function handleAddCenterInline(e) {
+    e.preventDefault();
+    const name = document.getElementById('center-name-i').value.trim();
+    const location = document.getElementById('center-loc-i').value.trim();
+    const errorEl = document.getElementById('add-center-error-i');
+    const btn = document.getElementById('add-center-btn-i');
+
+    errorEl.style.display = 'none';
+    if (!name) { errorEl.textContent = 'Center name is required.'; errorEl.style.display = ''; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
+
+    try {
+        const { error } = await _supabase.from('centers').insert({ name, location: location || null });
+        if (error) throw error;
+        showToast('Center created: ' + name, 'success');
+        setTimeout(() => openSupervisorMgmt(), 800);
+    } catch (err) {
+        errorEl.textContent = err.message || 'Failed to create center.';
+        errorEl.style.display = '';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Create Center';
+    }
+}
+
+async function deleteSupervisorRow(userId, name) {
+    if (!confirm('Remove supervisor "' + name + '"? They will lose access.')) return;
+    try {
+        const { error } = await _supabase.from('supervisors').delete().eq('user_id', userId);
+        if (error) throw error;
+        showToast('Supervisor removed: ' + name, 'success');
+        openSupervisorMgmt();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
 </script>
 </body>
 </html>

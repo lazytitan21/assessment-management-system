@@ -4,9 +4,8 @@
 
 A static web app (HTML/CSS/JS) that provides:
 
-1. **Admin tool** (`index.html`) — distributes examinees across centers, labs, rounds  
-2. **Admin Portal** (`admin.html`) — the admin logs in to add supervisors, assign passwords, and manage centers  
-3. **Supervisor Portal** (`supervisor.html`) — each center supervisor logs in to:
+1. **Admin tool** (`index.html`) — the admin logs in to distribute examinees across centers/labs/rounds, manage supervisors, and prepare everything for exam day  
+2. **Supervisor Portal** (`supervisor.html`) — each center supervisor logs in to:
    - View their center's examinees  
    - Scan QR codes to take attendance  
    - See attendance reports  
@@ -20,13 +19,13 @@ A static web app (HTML/CSS/JS) that provides:
 
 ```
 /
-├── index.html              # Admin distribution tool
-├── admin.html              # Admin portal (manage supervisors + centers)
+├── index.html              # Admin tool (login + distribution + supervisor management)
+├── admin.html              # (Optional) Standalone admin portal
 ├── supervisor.html         # Supervisor portal (login + dashboard)
 ├── admission-card.html     # Printable admission cards (auth required)
 ├── js/
 │   ├── config.js           # ← YOUR Supabase URL + key go here
-│   ├── admin.js            # Admin portal logic
+│   ├── admin.js            # Standalone admin portal logic
 │   ├── app.js              # Supervisor app logic
 │   ├── auth.js             # Login / logout
 │   ├── dashboard.js        # Examinee list + reports
@@ -68,7 +67,7 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/assessment-management-system.git
+git remote add origin https://github.com/lazytitan21/assessment-management-system.git
 git push -u origin main
 ```
 
@@ -92,9 +91,10 @@ git push -u origin main
 
 This is required so the admin can create supervisor accounts instantly.
 
-1. In Supabase, go to **Authentication** (left sidebar) → **Providers** → **Email**.
-2. **Turn OFF** the "Confirm email" toggle.
-3. Click **Save**.
+1. In Supabase, go to **Authentication** (left sidebar) → **Sign In / Providers** (under CONFIGURATION).
+2. Click on the **Email** provider row to expand it.
+3. Find the **"Confirm email"** toggle and **turn it OFF**.
+4. Click **Save**.
 
 > Without this, new supervisors would need to click a confirmation email before they can log in.
 
@@ -129,7 +129,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIs...';       // ← paste YOUR an
 
 ### 2E — Create your Admin account
 
-This is a one-time setup. The admin can then add supervisors through the Admin Portal UI.
+This is a one-time setup. The admin can then manage everything from `index.html`.
 
 1. Go to **Authentication** (left sidebar) → **Users** tab.
 2. Click **Add user** → **Create new user**.
@@ -151,18 +151,19 @@ INSERT INTO admins (user_id, full_name, email) VALUES
 
 7. Click **Run**.
 
-> Only this one admin needs to be created manually. After that, use the **Admin Portal** (`admin.html`) to add centers and supervisors with a nice UI — no SQL needed!
+> Only this one admin needs to be created manually. After that, use `index.html` to manage supervisors, centers, and exam distribution — no SQL needed!
 
-### 2F — Add centers and supervisors (via Admin Portal)
+### 2F — Add supervisors (from the main tool)
 
 Once deployed (Step 3), or running locally:
 
-1. Open `admin.html` in your browser and log in with the admin email/password from Step 2E.
-2. Go to the **Centers** tab → click **Add Center** → enter name and location.
-3. Go to the **Supervisors** tab → click **Add Supervisor** → fill in name, email, password, and select a center.
-4. The supervisor can now log in at `supervisor.html` with the email/password you assigned.
+1. Open `index.html` in your browser and log in with the admin email/password from Step 2E.
+2. Click the **👥 Supervisors** button in the header.
+3. In the popup, fill in the supervisor's name, email, password, and center.
+4. Click **Add** — the supervisor account is created instantly.
+5. The supervisor can now log in at `supervisor.html` with the email/password you assigned.
 
-> You can also add centers and supervisors later at any time through the Admin Portal.
+> You can add or remove supervisors at any time from within `index.html`.
 
 ### 2G — Add examinees
 
@@ -250,15 +251,11 @@ Go back to **Supabase → Authentication → URL Configuration** and:
 ## Step 4: Test Everything
 
 ### Test the admin tool
-- Visit `https://YOUR-APP.onrender.com/` → the distribution tool should load
-
-### Test the admin portal
-- Visit `https://YOUR-APP.onrender.com/admin.html`
+- Visit `https://YOUR-APP.onrender.com/` → you should see a login screen
 - Sign in with the admin email + password from Step 2E
-- You should see:
-  - Supervisors tab — add/remove supervisors with passwords
-  - Centers tab — add/remove assessment centers
-  - Overview tab — system-wide stats
+- After login, the full distribution tool loads
+- Click **👥 Supervisors** in the header to add/remove supervisors
+- Use the tool to configure centers, labs, rounds, and distribute examinees
 
 ### Test the supervisor portal
 - Visit `https://YOUR-APP.onrender.com/supervisor.html`
@@ -340,5 +337,3 @@ npx serve .
 ## License
 
 Created by **Eng. Firas Kiftaro** — Assessment Management System © 2025-2026
-#   a s s e s s m e n t - m a n a g e m e n t - s y s t e m  
- 
