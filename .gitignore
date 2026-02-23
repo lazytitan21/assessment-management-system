@@ -1,3 +1,9 @@
 node_modules/
 run-sql.js
 _fix_rls.sql
+diag.js
+diag2.js
+fix-db.js
+fix-schema.sql
+verify-schema.js
+verify-sync.js
