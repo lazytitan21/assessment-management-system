@@ -7,6 +7,8 @@
 
     <!-- Supabase JS v2 (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- QR Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Inter Font -->
@@ -102,6 +104,85 @@
             border-radius: var(--radius-sm); color: var(--success); font-size: 13px;
             margin-bottom: 12px; text-align: center;
         }
+
+        /* Assessment item */
+        .assessment-item {
+            display: flex; align-items: center; gap: 16px;
+            padding: 16px 20px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); margin-bottom: 10px;
+            background: var(--bg-card); transition: var(--transition);
+        }
+        .assessment-item:hover { box-shadow: var(--shadow-md); }
+        .assessment-icon {
+            width: 44px; height: 44px; border-radius: var(--radius-sm);
+            background: var(--warning-bg); color: var(--warning);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+        .assessment-info { flex: 1; min-width: 0; }
+        .assessment-name { font-weight: 700; font-size: 15px; }
+        .assessment-desc { font-size: 13px; color: var(--text-secondary); }
+        .assessment-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .assessment-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        /* Examinee table */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th {
+            background: var(--bg-accent); padding: 12px 16px; text-align: left;
+            font-weight: 600; color: var(--text-secondary);
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;
+        }
+        .data-table td { padding: 10px 16px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+        .data-table tbody tr:hover { background: var(--primary-bg); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+
+        /* Admission card styles (inline print) */
+        .cards-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 20px;
+        }
+        .admission-card {
+            background: white; padding: 24px; border: 2px solid var(--primary);
+            border-radius: var(--radius-md); page-break-inside: avoid;
+        }
+        .admission-card-header {
+            text-align: center; margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary);
+        }
+        .admission-card-title { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
+        .admission-card-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+        .admission-card-body { display: flex; gap: 20px; align-items: flex-start; }
+        .admission-card-info { flex: 1; }
+        .admission-card-row { font-size: 14px; line-height: 2; color: var(--text-primary); }
+        .admission-card-row .label { color: var(--text-secondary); font-weight: 500; }
+        .admission-card-qr { text-align: center; flex-shrink: 0; }
+        .admission-card-qr img { border: 2px solid var(--border-color); border-radius: var(--radius-sm); }
+        .qr-label { font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+        .admission-card-footer {
+            margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-light);
+            font-size: 11px; color: var(--text-muted); text-align: center;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 600;
+        }
+        .badge-primary { background: var(--primary-bg); color: var(--primary); }
+        .badge-success { background: var(--success-bg); color: var(--success); }
+        .badge-warning { background: var(--warning-bg); color: var(--warning); }
+        .badge-info { background: var(--info-bg); color: var(--info); }
+
+        @media print {
+            .app-header, .tab-nav, .card-header, .search-bar, .btn, .btn-group,
+            .modal-overlay, #toast-container, select { display: none !important; }
+            body { background: white; }
+            .card { box-shadow: none; border: none; padding: 0; }
+            .admission-card { border: 2px solid #333; page-break-after: always; }
+            .tab-panel { display: block !important; }
+            #panel-cards { display: block !important; }
+        }
     </style>
 </head>
 <body>
@@ -170,6 +251,15 @@
         <button class="tab-btn" data-tab="centers">
             <i class="fas fa-building"></i> Centers
         </button>
+        <button class="tab-btn" data-tab="assessments">
+            <i class="fas fa-clipboard-list"></i> Assessments
+        </button>
+        <button class="tab-btn" data-tab="examinees">
+            <i class="fas fa-users"></i> Examinees
+        </button>
+        <button class="tab-btn" data-tab="cards">
+            <i class="fas fa-id-card"></i> Admission Cards
+        </button>
         <button class="tab-btn" data-tab="overview">
             <i class="fas fa-chart-pie"></i> Overview
         </button>
@@ -216,6 +306,102 @@
                 </div>
                 <div id="centers-list">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading centers…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ASSESSMENTS TAB ===== -->
+        <div class="tab-panel" id="panel-assessments">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon warning"><i class="fas fa-clipboard-list"></i></div>
+                    <div style="flex:1">
+                        <div class="card-title">Assessments</div>
+                        <div class="card-desc" id="assessments-count">Loading…</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="Admin.openAddAssessmentModal()">
+                        <i class="fas fa-plus"></i> Add Assessment
+                    </button>
+                </div>
+                <div id="assessments-list">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading assessments…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== EXAMINEES TAB ===== -->
+        <div class="tab-panel" id="panel-examinees">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon primary"><i class="fas fa-users"></i></div>
+                    <div style="flex:1">
+                        <div class="card-title">Examinees</div>
+                        <div class="card-desc" id="examinees-count">Loading…</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="Admin.openAddExamineeModal()">
+                        <i class="fas fa-plus"></i> Add Examinee
+                    </button>
+                </div>
+                <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;">
+                        <select class="form-group" id="examinees-center-filter" style="width:100%;padding:10px 14px;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-secondary);color:var(--text-primary);">
+                            <option value="">All Centers</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:200px;">
+                        <select class="form-group" id="examinees-assessment-filter" style="width:100%;padding:10px 14px;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-secondary);color:var(--text-primary);">
+                            <option value="">All Assessments</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="examinees-search" placeholder="Search by name or national ID…">
+                </div>
+                <div id="examinees-list">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th>Name</th><th>National ID</th><th>Center</th><th>Assessment</th><th>Session</th><th>Attendance Code</th><th></th>
+                        </tr></thead>
+                        <tbody id="examinees-table-body">
+                            <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;"><i class="fas fa-spinner fa-spin"></i> Loading examinees…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ADMISSION CARDS TAB ===== -->
+        <div class="tab-panel" id="panel-cards">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon danger"><i class="fas fa-id-card"></i></div>
+                    <div style="flex:1">
+                        <div class="card-title">Admission Cards</div>
+                        <div class="card-desc">Generate and print admission cards with attendance QR codes</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;">
+                        <select id="cards-center-filter" style="width:100%;padding:10px 14px;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-secondary);color:var(--text-primary);">
+                            <option value="">All Centers</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:200px;">
+                        <select id="cards-assessment-filter" style="width:100%;padding:10px 14px;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-secondary);color:var(--text-primary);">
+                            <option value="">All Assessments</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="Admin.generateCards()">
+                        <i class="fas fa-id-card"></i> Generate Cards
+                    </button>
+                    <button class="btn btn-success" onclick="Admin.printCards()">
+                        <i class="fas fa-print"></i> Print All
+                    </button>
+                </div>
+                <div style="margin-bottom:12px;font-size:13px;color:var(--text-muted);" id="cards-count"></div>
+                <div class="cards-grid" id="cards-grid">
+                    <div class="empty-state"><i class="fas fa-id-card"></i><p>Select a center or assessment and click "Generate Cards" to preview admission cards with QR codes.</p></div>
                 </div>
             </div>
         </div>
@@ -305,6 +491,76 @@
                 <button type="button" class="btn btn-ghost" onclick="Admin.closeModal('add-center-modal')">Cancel</button>
                 <button type="submit" id="add-center-btn" class="btn btn-primary">
                     <i class="fas fa-plus"></i> Create Center
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== ADD ASSESSMENT MODAL ==================== -->
+<div id="add-assessment-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2><i class="fas fa-clipboard-list"></i> Add New Assessment</h2>
+        <form id="add-assessment-form">
+            <div class="form-group">
+                <label for="assessment-name">Assessment Name</label>
+                <input type="text" id="assessment-name" required placeholder="e.g. Annual IT Certification Exam 2026">
+            </div>
+            <div class="form-group">
+                <label for="assessment-description">Description (optional)</label>
+                <input type="text" id="assessment-description" placeholder="e.g. Round 1 for IT sector employees">
+            </div>
+            <div class="form-group">
+                <label for="assessment-date">Exam Date (optional)</label>
+                <input type="date" id="assessment-date">
+            </div>
+            <div id="add-assessment-error" class="error-msg" style="display:none"></div>
+            <div id="add-assessment-success" class="success-msg" style="display:none"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="Admin.closeModal('add-assessment-modal')">Cancel</button>
+                <button type="submit" id="add-assessment-btn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Assessment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== ADD EXAMINEE MODAL ==================== -->
+<div id="add-examinee-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2><i class="fas fa-user-plus"></i> Add New Examinee</h2>
+        <form id="add-examinee-form">
+            <div class="form-group">
+                <label for="examinee-fullname">Full Name</label>
+                <input type="text" id="examinee-fullname" required placeholder="e.g. Ahmed Mohammed">
+            </div>
+            <div class="form-group">
+                <label for="examinee-nationalid">National ID (optional)</label>
+                <input type="text" id="examinee-nationalid" placeholder="e.g. 784-1990-1234567-1">
+            </div>
+            <div class="form-group">
+                <label for="examinee-center">Assign to Center</label>
+                <select id="examinee-center" required>
+                    <option value="">— Select a center —</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="examinee-assessment">Assign to Assessment (optional)</label>
+                <select id="examinee-assessment">
+                    <option value="">— No assessment —</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="examinee-session">Exam Session (optional)</label>
+                <input type="text" id="examinee-session" placeholder="e.g. 2026-02-19 or Round 1">
+            </div>
+            <div id="add-examinee-error" class="error-msg" style="display:none"></div>
+            <div id="add-examinee-success" class="success-msg" style="display:none"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="Admin.closeModal('add-examinee-modal')">Cancel</button>
+                <button type="submit" id="add-examinee-btn" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Add Examinee
                 </button>
             </div>
         </form>

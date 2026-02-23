@@ -7,6 +7,7 @@
 -- Enable RLS on all tables
 -- ================================
 ALTER TABLE centers             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assessments         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE supervisors         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE examinees           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance_records  ENABLE ROW LEVEL SECURITY;
@@ -28,6 +29,21 @@ CREATE POLICY "supervisors_read_own_center"
 CREATE POLICY "supervisors_read_own_row"
     ON supervisors FOR SELECT
     USING (user_id = auth.uid());
+
+-- ================================
+-- ASSESSMENTS — Supervisors can read assessments linked to their center's examinees
+-- ================================
+CREATE POLICY "supervisors_read_assessments"
+    ON assessments FOR SELECT
+    USING (
+        id IN (
+            SELECT DISTINCT e.assessment_id FROM examinees e
+            WHERE e.center_id IN (
+                SELECT center_id FROM supervisors WHERE user_id = auth.uid()
+            )
+            AND e.assessment_id IS NOT NULL
+        )
+    );
 
 -- ================================
 -- EXAMINEES — Supervisors can read examinees in their center

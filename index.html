@@ -2844,19 +2844,60 @@ async function syncToDatabase() {
             if(delErr) console.warn('Could not clear old examinees for center:', delErr.message);
         }
 
+        // Step 2b: Create or find assessment record
+        updateProgress('Syncing to Database...', 'Setting up assessment...');
+        let assessmentId = null;
+        const assessmentName = (state.examName || 'Exam') + (state.examYear ? ' ' + state.examYear : '');
+        try {
+            // Check for existing assessment with same name
+            const { data: existAss } = await _supabase
+                .from('assessments')
+                .select('id')
+                .eq('name', assessmentName)
+                .maybeSingle();
+
+            if (existAss) {
+                assessmentId = existAss.id;
+            } else {
+                const assPayload = {
+                    name: assessmentName,
+                    description: state.examOrganizer || null
+                };
+                if (state.examStartDate) assPayload.exam_date = state.examStartDate;
+
+                const { data: newAss, error: assErr } = await _supabase
+                    .from('assessments')
+                    .insert(assPayload)
+                    .select('id')
+                    .single();
+
+                if (assErr) console.warn('Could not create assessment:', assErr.message);
+                else assessmentId = newAss.id;
+            }
+        } catch(ae) {
+            console.warn('Assessment creation skipped:', ae.message);
+        }
+
         updateProgress('Syncing to Database...', 'Uploading examinees...');
 
         // Step 3: Prepare examinee records
         const nf = findField(['Name_En','Name_Ar','Name','name','Full Name']) || state.headers[0];
         const idf = findField(['Employee ID','EmployeeID','ID','national_id','National ID']);
 
-        const records = state.assignments.map(a => ({
-            center_id: centerMap[a._center],
-            full_name: String(a[nf] || 'Unknown'),
-            national_id: idf ? String(a[idf] || '') : null,
-            exam_session: 'Day ' + a._day + ' R' + a._round + (a._date ? ' (' + a._date + ')' : '') + ' | ' + a._time + ' | ' + a._lab + ' | Seat ' + a._seatNo,
-            attendance_code: a._attendanceCode
-        }));
+        const records = state.assignments.map(a => {
+            const rec = {
+                center_id: centerMap[a._center],
+                full_name: String(a[nf] || 'Unknown'),
+                national_id: idf ? String(a[idf] || '') : null,
+                exam_session: 'Day ' + a._day + ' R' + a._round + (a._date ? ' (' + a._date + ')' : '') + ' | ' + a._time + ' | ' + a._lab + ' | Seat ' + a._seatNo,
+                attendance_code: a._attendanceCode,
+                session_number: a._round || null,
+                room: a._lab || null,
+                seat_number: a._seatNo || null
+            };
+            if (assessmentId) rec.assessment_id = assessmentId;
+            return rec;
+        });
 
         // Step 4: Insert in batches of 500
         const batchSize = 500;

@@ -19,7 +19,21 @@ CREATE TABLE IF NOT EXISTS centers (
 COMMENT ON TABLE centers IS 'Assessment / exam centers';
 
 -- ================================
--- 2. SUPERVISORS
+-- 2. ASSESSMENTS
+-- ================================
+CREATE TABLE IF NOT EXISTS assessments (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL,
+    description TEXT,
+    exam_date   DATE,
+    created_by  UUID REFERENCES auth.users(id),
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+COMMENT ON TABLE assessments IS 'Named assessment events that examinees are assigned to';
+
+-- ================================
+-- 3. SUPERVISORS
 -- ================================
 CREATE TABLE IF NOT EXISTS supervisors (
     user_id     UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -32,11 +46,12 @@ CREATE TABLE IF NOT EXISTS supervisors (
 COMMENT ON TABLE supervisors IS 'Maps each Supabase Auth user to an assessment center';
 
 -- ================================
--- 3. EXAMINEES
+-- 4. EXAMINEES
 -- ================================
 CREATE TABLE IF NOT EXISTS examinees (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     center_id       UUID NOT NULL REFERENCES centers(id) ON DELETE CASCADE,
+    assessment_id   UUID REFERENCES assessments(id) ON DELETE SET NULL,
     full_name       TEXT NOT NULL,
     national_id     TEXT,
     exam_session    TEXT,                                          -- e.g. "2026-02-19", "Round 1", etc.
@@ -44,14 +59,17 @@ CREATE TABLE IF NOT EXISTS examinees (
     created_at      TIMESTAMPTZ DEFAULT now()
 );
 
-COMMENT ON TABLE examinees IS 'Examinees assigned to a center';
+COMMENT ON TABLE examinees IS 'Examinees assigned to a center and optionally to an assessment';
 COMMENT ON COLUMN examinees.attendance_code IS 'Unique code encoded in the QR on admission cards';
+COMMENT ON COLUMN examinees.assessment_id IS 'Links examinee to a specific assessment event';
 
 -- Index for fast QR lookups
 CREATE INDEX IF NOT EXISTS idx_examinees_attendance_code ON examinees (attendance_code);
+-- Index for assessment-based queries
+CREATE INDEX IF NOT EXISTS idx_examinees_assessment_id ON examinees (assessment_id);
 
 -- ================================
--- 4. ATTENDANCE RECORDS
+-- 5. ATTENDANCE RECORDS
 -- ================================
 CREATE TABLE IF NOT EXISTS attendance_records (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

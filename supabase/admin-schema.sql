@@ -62,6 +62,42 @@ CREATE POLICY "admins_delete_centers"
     );
 
 -- ================================
+-- ADMIN POLICIES — Admins can read ALL assessments
+-- ================================
+CREATE POLICY "admins_read_all_assessments"
+    ON assessments FOR SELECT
+    USING (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
+-- ADMIN POLICIES — Admins can INSERT assessments
+-- ================================
+CREATE POLICY "admins_insert_assessments"
+    ON assessments FOR INSERT
+    WITH CHECK (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
+-- ADMIN POLICIES — Admins can UPDATE assessments
+-- ================================
+CREATE POLICY "admins_update_assessments"
+    ON assessments FOR UPDATE
+    USING (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
+-- ADMIN POLICIES — Admins can DELETE assessments
+-- ================================
+CREATE POLICY "admins_delete_assessments"
+    ON assessments FOR DELETE
+    USING (
+        auth.uid() IN (SELECT user_id FROM admins)
+    );
+
+-- ================================
 -- ADMIN POLICIES — Admins can read ALL supervisors
 -- ================================
 CREATE POLICY "admins_read_all_supervisors"

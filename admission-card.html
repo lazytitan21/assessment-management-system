@@ -120,29 +120,50 @@
     var sessionResp = await sb.auth.getSession();
     var session = sessionResp.data.session;
     if (!session || !session.user) {
-        contentEl.innerHTML = '<div class="error-screen"><i class="fas fa-lock"></i><br>You must be signed in to view admission cards.<br><br><a href="supervisor.html">Go to Supervisor Portal</a></div>';
+        contentEl.innerHTML = '<div class="error-screen"><i class="fas fa-lock"></i><br>You must be signed in to view admission cards.<br><br><a href="supervisor.html">Go to Supervisor Portal</a> | <a href="admin.html">Go to Admin Portal</a></div>';
         return;
     }
     var userId = session.user.id;
 
-    // ---- Load supervisor & center ----
-    var supResp = await sb.from('supervisors').select('*').eq('user_id', userId).single();
-    if (supResp.error || !supResp.data) {
-        contentEl.innerHTML = '<div class="error-screen">Supervisor profile not found.</div>';
-        return;
-    }
-    var supervisor = supResp.data;
+    // ---- Determine user role: admin or supervisor ----
+    var isAdmin = false;
+    var supervisor = null;
+    var centerName = '';
 
-    var centerResp = await sb.from('centers').select('*').eq('id', supervisor.center_id).single();
-    var centerName = (centerResp.data && centerResp.data.name) || 'Unknown Center';
+    var adminCheck = await sb.from('admins').select('*').eq('user_id', userId).single();
+    if (adminCheck.data) {
+        isAdmin = true;
+    } else {
+        var supResp = await sb.from('supervisors').select('*').eq('user_id', userId).single();
+        if (supResp.error || !supResp.data) {
+            contentEl.innerHTML = '<div class="error-screen">Profile not found. You must be a supervisor or admin to view admission cards.</div>';
+            return;
+        }
+        supervisor = supResp.data;
+
+        var centerResp = await sb.from('centers').select('*').eq('id', supervisor.center_id).single();
+        centerName = (centerResp.data && centerResp.data.name) || 'Unknown Center';
+    }
 
     // ---- Parse query params ----
     var params = new URLSearchParams(window.location.search);
     var singleId = params.get('id');
+    var filteredCenter = params.get('center');
+    var filteredAssessment = params.get('assessment');
 
     // ---- Load examinees ----
-    var query = sb.from('examinees').select('*').order('full_name', { ascending: true });
-    if (singleId) query = query.eq('id', singleId);
+    var query = sb.from('examinees').select('*, centers(name), assessments(name)').order('full_name', { ascending: true });
+
+    if (singleId) {
+        query = query.eq('id', singleId);
+    } else if (!isAdmin && supervisor) {
+        // Supervisors only see their center's examinees
+        query = query.eq('center_id', supervisor.center_id);
+    } else if (isAdmin) {
+        // Admin can filter by center or assessment via query params
+        if (filteredCenter) query = query.eq('center_id', filteredCenter);
+        if (filteredAssessment) query = query.eq('assessment_id', filteredAssessment);
+    }
 
     var examResp = await query;
     if (examResp.error) {
@@ -159,6 +180,8 @@
     // ---- Render cards ----
     var html = '<div class="cards-container">';
     examinees.forEach(function (ex) {
+        var exCenterName = (ex.centers && ex.centers.name) ? ex.centers.name : centerName || 'Unknown Center';
+        var exAssessmentName = (ex.assessments && ex.assessments.name) ? ex.assessments.name : '';
         var qrDataUrl = '';
         try {
             var qr = qrcode(0, 'M');
@@ -170,14 +193,16 @@
         html += '<div class="admission-card">' +
             '<div class="admission-card-header">' +
             '<div class="admission-card-title">ADMISSION CARD</div>' +
-            '<div class="admission-card-subtitle">' + esc(centerName) + '</div>' +
+            '<div class="admission-card-subtitle">' + esc(exAssessmentName || exCenterName) + '</div>' +
             '</div>' +
             '<div class="admission-card-body">' +
             '<div class="admission-card-info">' +
             '<div class="admission-card-row"><span class="label">Name:</span> <strong>' + esc(ex.full_name) + '</strong></div>' +
             (ex.national_id ? '<div class="admission-card-row"><span class="label">National ID:</span> ' + esc(ex.national_id) + '</div>' : '') +
-            (ex.exam_session ? '<div class="admission-card-row"><span class="label">Session:</span> ' + esc(ex.exam_session) + '</div>' : '') +
-            '<div class="admission-card-row"><span class="label">Center:</span> ' + esc(centerName) + '</div>' +
+            (ex.session_number ? '<div class="admission-card-row"><span class="label">Session:</span> ' + esc(String(ex.session_number)) + '</div>' : '') +
+            '<div class="admission-card-row"><span class="label">Center:</span> ' + esc(exCenterName) + '</div>' +
+            (ex.room ? '<div class="admission-card-row"><span class="label">Room:</span> ' + esc(ex.room) + '</div>' : '') +
+            (ex.seat_number ? '<div class="admission-card-row"><span class="label">Seat:</span> ' + esc(String(ex.seat_number)) + '</div>' : '') +
             '</div>' +
             (qrDataUrl
                 ? '<div class="admission-card-qr">' +
