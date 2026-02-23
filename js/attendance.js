@@ -71,11 +71,12 @@
         var attendanceCode = code.trim();
 
         try {
-            // 1. Look up examinee by attendance_code (RLS restricts to own center)
-            var resp = await App.supabase
+            // 1. Look up examinee by attendance_code using service client
+            var resp = await App.db
                 .from('examinees')
                 .select('*')
                 .eq('attendance_code', attendanceCode)
+                .eq('center_id', App.center.id)
                 .maybeSingle();
 
             if (resp.error) throw resp.error;
@@ -99,7 +100,7 @@
 
             // 2. Insert attendance record
             var session = getExamSession() || examinee.exam_session || '';
-            var insertResp = await App.supabase
+            var insertResp = await App.db
                 .from('attendance_records')
                 .insert({
                     examinee_id: examinee.id,

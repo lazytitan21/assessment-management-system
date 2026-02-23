@@ -8,9 +8,12 @@
     // ===================== EXAMINEES =====================
 
     App.loadExaminees = async function () {
-        const { data, error } = await App.supabase
+        if (!App.center) { App.examinees = []; return; }
+
+        const { data, error } = await App.db
             .from('examinees')
             .select('*')
+            .eq('center_id', App.center.id)
             .order('full_name', { ascending: true });
 
         if (error) { App.showToast('Error loading examinees: ' + error.message, 'error'); return; }
@@ -75,9 +78,12 @@
     // ===================== ATTENDANCE DATA =====================
 
     App.loadAttendanceRecords = async function () {
-        const { data, error } = await App.supabase
+        if (!App.center) { App.attendanceRecords = []; return; }
+
+        const { data, error } = await App.db
             .from('attendance_records')
             .select('*')
+            .eq('center_id', App.center.id)
             .order('scanned_at', { ascending: false });
 
         if (error) { App.showToast('Error loading attendance: ' + error.message, 'error'); return; }

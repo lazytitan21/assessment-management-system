@@ -15,9 +15,18 @@
     App.currentAssessment = null;  // null = all exams
 
     // --------------- Initialize Supabase ---------------
+    // Anon client — used for auth and attendance inserts (needs user identity)
     App.supabase = window.supabase.createClient(
         window.SUPABASE_URL,
         window.SUPABASE_ANON_KEY
+    );
+
+    // Service-role client — used for data reads, bypasses RLS
+    // Data isolation is enforced in code by filtering on App.center.id
+    App.db = window.supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_SERVICE_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
     // --------------- Utility: HTML-escape ---------------

@@ -29,8 +29,8 @@
 
     // --------------- Load supervisor profile + center ---------------
     App.loadSupervisorProfile = async function (userId) {
-        // Fetch supervisor row (RLS restricts to own row)
-        const { data: sup, error: supErr } = await App.supabase
+        // Fetch supervisor row using service client (bypasses RLS issues)
+        const { data: sup, error: supErr } = await App.db
             .from('supervisors')
             .select('*')
             .eq('user_id', userId)
@@ -41,8 +41,8 @@
         }
         App.supervisor = sup;
 
-        // Fetch center row (RLS restricts to own center)
-        const { data: center, error: centerErr } = await App.supabase
+        // Fetch center row
+        const { data: center, error: centerErr } = await App.db
             .from('centers')
             .select('*')
             .eq('id', sup.center_id)
@@ -58,21 +58,40 @@
 
     // --------------- Load assessments for this supervisor's center ---------------
     App.loadAssessments = async function () {
-        // RLS policy "supervisors_read_assessments" restricts this to assessments
-        // linked to the supervisor's center via examinees
         try {
-            const { data, error } = await App.supabase
+            if (!App.center) {
+                App.assessments = [];
+                return;
+            }
+
+            // First get the assessment IDs linked to this center's examinees
+            const { data: examRows, error: exErr } = await App.db
+                .from('examinees')
+                .select('assessment_id')
+                .eq('center_id', App.center.id)
+                .not('assessment_id', 'is', null);
+
+            if (exErr) {
+                console.warn('Error fetching examinee assessment links:', exErr.message);
+                App.assessments = [];
+                return;
+            }
+
+            // Get unique assessment IDs
+            const assessmentIds = [...new Set((examRows || []).map(function (r) { return r.assessment_id; }))];
+            if (!assessmentIds.length) {
+                App.assessments = [];
+                return;
+            }
+
+            // Fetch the actual assessment records
+            const { data, error } = await App.db
                 .from('assessments')
                 .select('*')
+                .in('id', assessmentIds)
                 .order('exam_date', { ascending: false });
 
             if (error) {
-                // Gracefully handle missing table (schema cache not reloaded yet)
-                if (error.message && error.message.indexOf('schema cache') !== -1) {
-                    console.warn('Assessments table not in schema cache yet. Ask admin to reload schema.');
-                    App.assessments = [];
-                    return;
-                }
                 console.warn('Error loading assessments:', error.message);
                 App.assessments = [];
                 return;
