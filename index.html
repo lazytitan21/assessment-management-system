@@ -2890,10 +2890,7 @@ async function syncToDatabase() {
                 full_name: String(a[nf] || 'Unknown'),
                 national_id: idf ? String(a[idf] || '') : null,
                 exam_session: 'Day ' + a._day + ' R' + a._round + (a._date ? ' (' + a._date + ')' : '') + ' | ' + a._time + ' | ' + a._lab + ' | Seat ' + a._seatNo,
-                attendance_code: a._attendanceCode,
-                session_number: a._round || null,
-                room: a._lab || null,
-                seat_number: a._seatNo || null
+                attendance_code: a._attendanceCode
             };
             if (assessmentId) rec.assessment_id = assessmentId;
             return rec;
@@ -2902,9 +2899,20 @@ async function syncToDatabase() {
         // Step 4: Insert in batches of 500
         const batchSize = 500;
         let inserted = 0;
+        let retryWithoutAssessment = false;
         for(let i = 0; i < records.length; i += batchSize) {
-            const batch = records.slice(i, i + batchSize);
-            const { error: insertErr } = await _supabase.from('examinees').insert(batch);
+            let batch = records.slice(i, i + batchSize);
+            if (retryWithoutAssessment) {
+                batch = batch.map(r => { const {assessment_id, ...rest} = r; return rest; });
+            }
+            let { error: insertErr } = await _supabase.from('examinees').insert(batch);
+            // If assessment_id column doesn't exist yet, retry without it
+            if(insertErr && insertErr.message && insertErr.message.indexOf('assessment_id') !== -1 && !retryWithoutAssessment) {
+                retryWithoutAssessment = true;
+                batch = records.slice(i, i + batchSize).map(r => { const {assessment_id, ...rest} = r; return rest; });
+                const retry = await _supabase.from('examinees').insert(batch);
+                insertErr = retry.error;
+            }
             if(insertErr) throw new Error('Error inserting examinees (batch ' + Math.floor(i/batchSize+1) + '): ' + insertErr.message);
             inserted += batch.length;
             updateProgress('Syncing to Database...', inserted + ' / ' + records.length + ' examinees uploaded');

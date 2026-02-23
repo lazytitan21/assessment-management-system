@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS examinees (
     full_name       TEXT NOT NULL,
     national_id     TEXT,
     exam_session    TEXT,                                          -- e.g. "2026-02-19", "Round 1", etc.
+    session_number  INTEGER,                                       -- numeric round/session number
+    room            TEXT,                                          -- lab/room name
+    seat_number     INTEGER,                                       -- seat assignment
     attendance_code TEXT UNIQUE NOT NULL DEFAULT gen_random_uuid()::text,
     created_at      TIMESTAMPTZ DEFAULT now()
 );
