@@ -87,6 +87,16 @@
                 return;
             }
 
+            // 1b. If a specific exam is selected, verify examinee belongs to it
+            if (App.currentAssessment && examinee.assessment_id !== App.currentAssessment.id) {
+                showResult('warning', 'Wrong Exam',
+                    App.esc(examinee.full_name) + ' is not assigned to the selected exam (' +
+                    App.esc(App.currentAssessment.name) + ').',
+                    examinee);
+                setTimeout(resumeScanner, 2500);
+                return;
+            }
+
             // 2. Insert attendance record
             var session = getExamSession() || examinee.exam_session || '';
             var insertResp = await App.supabase

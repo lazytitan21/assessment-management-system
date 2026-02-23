@@ -758,7 +758,7 @@
             };
             if (nationalId) payload.national_id = nationalId;
             if (assessmentId) payload.assessment_id = assessmentId;
-            if (session) payload.session_number = parseInt(session) || null;
+            if (session) payload.exam_session = session;
 
             var result = await Admin.supabase.from('examinees').insert(payload);
             if (result.error) throw result.error;

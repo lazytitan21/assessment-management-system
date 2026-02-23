@@ -15,25 +15,30 @@
 
         if (error) { App.showToast('Error loading examinees: ' + error.message, 'error'); return; }
         App.examinees = data || [];
-        App.renderExaminees(App.examinees);
+        App.renderExaminees(App.getFilteredExaminees());
     };
 
     App.renderExaminees = function (list) {
         const wrap = document.getElementById('examinees-table');
         const countEl = document.getElementById('examinees-count');
-        countEl.textContent = list.length + ' examinee(s) in your center';
+        var assessmentLabel = App.currentAssessment ? App.currentAssessment.name : 'your center';
+        countEl.textContent = list.length + ' examinee(s) in ' + assessmentLabel;
 
         if (!list.length) {
-            wrap.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No examinees found for your center.</p></div>';
+            wrap.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No examinees found' +
+                (App.currentAssessment ? ' for this exam.' : ' for your center.') + '</p></div>';
             return;
         }
+
+        // Get relevant attendance record IDs for performance
+        var attendedSet = new Set(App.attendanceRecords.map(function (r) { return r.examinee_id; }));
 
         let html = '<table class="data-table"><thead><tr>' +
             '<th>#</th><th>Name</th><th>National ID</th><th>Session</th><th>Attendance</th><th>Card</th>' +
             '</tr></thead><tbody>';
 
         list.forEach(function (ex, i) {
-            const attended = App.attendanceRecords.some(function (r) { return r.examinee_id === ex.id; });
+            const attended = attendedSet.has(ex.id);
             const statusBadge = attended
                 ? '<span class="badge badge-success"><i class="fas fa-check"></i> Present</span>'
                 : '<span class="badge badge-secondary">—</span>';
@@ -53,12 +58,14 @@
     };
 
     App.filterExaminees = function (query) {
+        // Start from the assessment-filtered list
+        var baseList = App.getFilteredExaminees();
         if (!query || query.length < 1) {
-            App.renderExaminees(App.examinees);
+            App.renderExaminees(baseList);
             return;
         }
         var q = query.toLowerCase();
-        var filtered = App.examinees.filter(function (ex) {
+        var filtered = baseList.filter(function (ex) {
             return (ex.full_name || '').toLowerCase().indexOf(q) !== -1 ||
                    (ex.national_id || '').toLowerCase().indexOf(q) !== -1;
         });
@@ -80,15 +87,23 @@
     // ===================== REPORTS =====================
 
     App.renderReports = function () {
-        const total = App.examinees.length;
-        const attendedIds = new Set(App.attendanceRecords.map(function (r) { return r.examinee_id; }));
-        const attended = App.examinees.filter(function (ex) { return attendedIds.has(ex.id); }).length;
-        const notAttended = total - attended;
-        const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+        // Use assessment-filtered examinees for reports
+        var filteredExaminees = App.getFilteredExaminees();
+        var filteredIds = new Set(filteredExaminees.map(function (ex) { return ex.id; }));
 
-        // Sessions breakdown
+        var total = filteredExaminees.length;
+        var attendedIds = new Set(
+            App.attendanceRecords
+                .filter(function (r) { return filteredIds.has(r.examinee_id); })
+                .map(function (r) { return r.examinee_id; })
+        );
+        var attended = filteredExaminees.filter(function (ex) { return attendedIds.has(ex.id); }).length;
+        var notAttended = total - attended;
+        var pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+        // Sessions breakdown (within filtered examinees)
         const sessions = {};
-        App.examinees.forEach(function (ex) {
+        filteredExaminees.forEach(function (ex) {
             var s = ex.exam_session || 'No Session';
             if (!sessions[s]) sessions[s] = { total: 0, attended: 0 };
             sessions[s].total++;
@@ -96,7 +111,11 @@
         });
 
         // Stats cards
+        var examTitle = App.currentAssessment ? App.currentAssessment.name : 'All Exams';
         var statsHtml =
+            '<div class="stat-card"><div class="stat-icon" style="background:var(--primary-bg);color:var(--primary)"><i class="fas fa-file-alt"></i></div>' +
+            '<div class="stat-value" style="font-size:16px;word-break:break-word;">' + App.esc(examTitle) + '</div><div class="stat-label">Current Exam</div></div>' +
+
             '<div class="stat-card"><div class="stat-icon" style="background:var(--primary-bg);color:var(--primary)"><i class="fas fa-users"></i></div>' +
             '<div class="stat-value">' + total + '</div><div class="stat-label">Total Examinees</div></div>' +
 

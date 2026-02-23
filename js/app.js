@@ -11,6 +11,8 @@
     App.center = null;
     App.examinees = [];
     App.attendanceRecords = [];
+    App.assessments = [];
+    App.currentAssessment = null;  // null = all exams
 
     // --------------- Initialize Supabase ---------------
     App.supabase = window.supabase.createClient(
@@ -56,8 +58,72 @@
         }
 
         // Refresh data when switching tabs
+        if (tabName === 'examinees') App.renderExaminees(App.getFilteredExaminees());
         if (tabName === 'reports') App.renderReports();
         if (tabName === 'cards') App.renderCardsList();
+    };
+
+    // --------------- Get filtered examinees based on current assessment ---------------
+    App.getFilteredExaminees = function () {
+        if (!App.currentAssessment) return App.examinees;
+        return App.examinees.filter(function (ex) {
+            return ex.assessment_id === App.currentAssessment.id;
+        });
+    };
+
+    // --------------- Handle assessment selection ---------------
+    App.onAssessmentChange = function () {
+        var select = document.getElementById('assessment-select');
+        var selectedId = select.value;
+        var infoEl = document.getElementById('selector-info');
+
+        if (!selectedId) {
+            App.currentAssessment = null;
+            infoEl.innerHTML = '<span class="badge badge-secondary">' + App.examinees.length + ' total examinees</span>';
+        } else {
+            App.currentAssessment = App.assessments.find(function (a) { return a.id === selectedId; }) || null;
+            var filtered = App.getFilteredExaminees();
+            infoEl.innerHTML = '<span class="badge badge-primary">' + filtered.length + ' examinee(s)</span>' +
+                (App.currentAssessment && App.currentAssessment.exam_date
+                    ? ' <span class="badge badge-info">' + App.esc(App.currentAssessment.exam_date) + '</span>'
+                    : '');
+        }
+
+        // Re-render all views for the selected assessment
+        App.renderExaminees(App.getFilteredExaminees());
+        App.renderReports();
+        App.renderCardsList();
+    };
+
+    // --------------- Populate assessment dropdown ---------------
+    App.populateAssessmentSelector = function () {
+        var select = document.getElementById('assessment-select');
+        var selectorDiv = document.getElementById('assessment-selector');
+        var infoEl = document.getElementById('selector-info');
+        select.innerHTML = '<option value="">— All Exams —</option>';
+
+        if (!App.assessments.length) {
+            selectorDiv.style.display = 'none';
+            return;
+        }
+
+        App.assessments.forEach(function (a) {
+            var opt = document.createElement('option');
+            opt.value = a.id;
+            var label = a.name;
+            if (a.exam_date) label += ' (' + a.exam_date + ')';
+            opt.textContent = label;
+            select.appendChild(opt);
+        });
+
+        selectorDiv.style.display = '';
+        infoEl.innerHTML = '<span class="badge badge-secondary">' + App.examinees.length + ' total examinees</span>';
+
+        // Auto-select if there's only one assessment
+        if (App.assessments.length === 1) {
+            select.value = App.assessments[0].id;
+            App.onAssessmentChange();
+        }
     };
 
     // --------------- Show login, hide app ---------------
@@ -118,11 +184,14 @@
         var sessionInput = document.getElementById('exam-session-input');
         if (sessionInput && !sessionInput.value) sessionInput.value = today;
 
-        // Load data
-        await Promise.all([App.loadExaminees(), App.loadAttendanceRecords()]);
+        // Load data (examinees, attendance, assessments in parallel)
+        await Promise.all([App.loadExaminees(), App.loadAttendanceRecords(), App.loadAssessments()]);
+
+        // Populate assessment selector
+        App.populateAssessmentSelector();
 
         // Render
-        App.renderExaminees(App.examinees);
+        App.renderExaminees(App.getFilteredExaminees());
         App.renderReports();
         App.renderCardsList();
     }
@@ -143,6 +212,12 @@
             searchInput.addEventListener('input', function () {
                 App.filterExaminees(this.value);
             });
+        }
+
+        // Bind assessment selector
+        var assessmentSelect = document.getElementById('assessment-select');
+        if (assessmentSelect) {
+            assessmentSelect.addEventListener('change', App.onAssessmentChange);
         }
 
         // Check existing session

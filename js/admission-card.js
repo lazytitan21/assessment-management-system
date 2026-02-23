@@ -6,7 +6,7 @@
     const App = window.App = window.App || {};
 
     // --------------- Build a single card HTML ---------------
-    App.buildCardHtml = function (examinee, centerName) {
+    App.buildCardHtml = function (examinee, centerName, assessmentName) {
         var qrDataUrl = '';
         try {
             var qr = qrcode(0, 'M');
@@ -21,6 +21,7 @@
             '<div class="admission-card-header">' +
             '<div class="admission-card-title">ADMISSION CARD</div>' +
             '<div class="admission-card-subtitle">' + App.esc(centerName || '') + '</div>' +
+            (assessmentName ? '<div class="admission-card-subtitle" style="font-weight:600;color:var(--primary);">' + App.esc(assessmentName) + '</div>' : '') +
             '</div>' +
             '<div class="admission-card-body">' +
             '<div class="admission-card-info">' +
@@ -45,16 +46,21 @@
     // --------------- Render cards list in the Cards tab ---------------
     App.renderCardsList = function () {
         var el = document.getElementById('cards-list');
-        if (!App.examinees.length) {
-            el.innerHTML = '<div class="empty-state"><i class="fas fa-id-card"></i><p>No examinees found.</p></div>';
+        // Use filtered examinees (respects assessment selection)
+        var filteredList = App.getFilteredExaminees();
+
+        if (!filteredList.length) {
+            el.innerHTML = '<div class="empty-state"><i class="fas fa-id-card"></i><p>No examinees found' +
+                (App.currentAssessment ? ' for the selected exam.' : '.') + '</p></div>';
             return;
         }
 
         var centerName = App.center ? App.center.name : '';
+        var assessmentName = App.currentAssessment ? App.currentAssessment.name : '';
         var html = '<div class="cards-grid">';
-        App.examinees.forEach(function (ex) {
+        filteredList.forEach(function (ex) {
             html += '<div class="card-preview-wrap">' +
-                App.buildCardHtml(ex, centerName) +
+                App.buildCardHtml(ex, centerName, assessmentName) +
                 '<div class="card-actions">' +
                 '<button class="btn btn-sm btn-outline" onclick="App.viewCard(\'' + ex.id + '\')">' +
                 '<i class="fas fa-external-link-alt"></i> View / Print</button>' +
@@ -69,8 +75,12 @@
         window.open('admission-card.html?id=' + examineeId, '_blank');
     };
 
-    // --------------- Print all cards (open in new tab) ---------------
+    // --------------- Print all cards (open in new tab with assessment filter) ---------------
     App.printAllCards = function () {
-        window.open('admission-card.html', '_blank');
+        var url = 'admission-card.html';
+        if (App.currentAssessment) {
+            url += '?assessment=' + encodeURIComponent(App.currentAssessment.id);
+        }
+        window.open(url, '_blank');
     };
 })();

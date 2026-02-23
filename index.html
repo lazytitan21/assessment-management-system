@@ -2793,6 +2793,29 @@ async function syncToDatabase() {
         return;
     }
 
+    // Pre-flight: verify admin auth is active
+    try {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (!session || !session.user) {
+            showToast('Session expired — please sign in again.', 'error');
+            document.getElementById('admin-login-overlay').classList.remove('hidden');
+            return;
+        }
+        const { data: adminRow, error: adminErr } = await _supabase
+            .from('admins')
+            .select('user_id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+        if (adminErr || !adminRow) {
+            showToast('Admin auth check failed. You may not be registered as an admin.', 'error');
+            console.error('Admin pre-flight:', adminErr, adminRow);
+            return;
+        }
+    } catch (pf) {
+        showToast('Auth check error: ' + pf.message, 'error');
+        return;
+    }
+
     // Ensure attendance codes exist
     state.assignments.forEach(a => {
         if(!a._attendanceCode) a._attendanceCode = crypto.randomUUID();
@@ -2861,7 +2884,8 @@ async function syncToDatabase() {
             } else {
                 const assPayload = {
                     name: assessmentName,
-                    description: state.examOrganizer || null
+                    description: state.examOrganizer || null,
+                    created_by: (await _supabase.auth.getUser()).data.user?.id || null
                 };
                 if (state.examStartDate) assPayload.exam_date = state.examStartDate;
 

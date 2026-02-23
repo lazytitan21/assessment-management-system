@@ -23,6 +23,8 @@
         App.center = null;
         App.examinees = [];
         App.attendanceRecords = [];
+        App.assessments = [];
+        App.currentAssessment = null;
     };
 
     // --------------- Load supervisor profile + center ---------------
@@ -52,6 +54,23 @@
         App.center = center;
 
         return { supervisor: sup, center: center };
+    };
+
+    // --------------- Load assessments for this supervisor's center ---------------
+    App.loadAssessments = async function () {
+        // RLS policy "supervisors_read_assessments" restricts this to assessments
+        // linked to the supervisor's center via examinees
+        const { data, error } = await App.supabase
+            .from('assessments')
+            .select('*')
+            .order('exam_date', { ascending: false });
+
+        if (error) {
+            App.showToast('Error loading assessments: ' + error.message, 'error');
+            App.assessments = [];
+            return;
+        }
+        App.assessments = data || [];
     };
 
     // --------------- Get current session ---------------

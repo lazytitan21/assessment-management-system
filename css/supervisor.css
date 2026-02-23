@@ -133,6 +133,40 @@ body {
     border-bottom: 1px solid var(--border-color); overflow-x: auto;
     max-width: 1200px; margin: 0 auto;
 }
+
+/* ---- Assessment / Exam Selector Bar ---- */
+.assessment-selector {
+    background: linear-gradient(135deg, rgba(79,70,229,0.04) 0%, rgba(59,130,246,0.06) 100%);
+    border-bottom: 2px solid var(--primary);
+    padding: 0;
+}
+.selector-inner {
+    max-width: 1200px; margin: 0 auto; padding: 14px 32px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.selector-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 700; color: var(--primary);
+    white-space: nowrap;
+}
+.selector-label i { font-size: 16px; }
+.assessment-dropdown {
+    flex: 1; min-width: 200px; max-width: 450px;
+    padding: 10px 14px; border: 2px solid var(--primary);
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+    font-family: inherit; background: var(--bg-secondary); color: var(--text-primary);
+    cursor: pointer; transition: var(--transition); outline: none;
+    appearance: auto;
+}
+.assessment-dropdown:focus {
+    box-shadow: 0 0 0 3px var(--primary-bg);
+}
+.assessment-dropdown:hover {
+    border-color: var(--primary-dark);
+}
+.selector-info {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
 .tab-btn {
     padding: 10px 20px; border: none; background: transparent;
     border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
@@ -311,7 +345,7 @@ body {
 @media print {
     .app-header, .tab-nav, .search-bar, .btn, .btn-group,
     .card-actions, .scan-controls, #qr-reader, #toast-container,
-    .no-print { display: none !important; }
+    .assessment-selector, .no-print { display: none !important; }
     body { background: white; }
     .card { box-shadow: none; border: none; }
     .admission-card { page-break-inside: avoid; page-break-after: always; }
@@ -322,6 +356,8 @@ body {
     .header-inner { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
     .header-title { font-size: 16px; }
     .header-user span { display: none; }
+    .selector-inner { padding: 12px 16px; }
+    .assessment-dropdown { max-width: 100%; min-width: 0; }
     .tab-nav { padding: 8px 16px; }
     .tab-btn { padding: 8px 12px; font-size: 13px; }
     .main-content { padding: 16px; }
