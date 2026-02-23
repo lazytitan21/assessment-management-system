@@ -678,15 +678,28 @@
 
     Admin.confirmDeleteAssessment = function (assessmentId, name) {
         document.getElementById('delete-confirm-text').textContent =
-            'Are you sure you want to delete assessment "' + name + '"? Examinees linked to this assessment will be unlinked (not deleted).';
+            'Are you sure you want to delete assessment "' + name + '"? This will permanently remove all examinees and attendance records linked to this assessment.';
 
         pendingDeleteAction = async function () {
             try {
+                // 1. Get examinee IDs linked to this assessment
+                var exResult = await Admin.serviceClient.from('examinees').select('id').eq('assessment_id', assessmentId);
+                var exIds = (exResult.data || []).map(function (e) { return e.id; });
+
+                // 2. Delete attendance records for those examinees
+                if (exIds.length) {
+                    await Admin.serviceClient.from('attendance_records').delete().in('examinee_id', exIds);
+                }
+
+                // 3. Delete examinees linked to this assessment
+                await Admin.serviceClient.from('examinees').delete().eq('assessment_id', assessmentId);
+
+                // 4. Delete the assessment
                 var result = await Admin.serviceClient.from('assessments').delete().eq('id', assessmentId);
                 if (result.error) throw result.error;
 
                 Admin.showToast('Assessment deleted: ' + name, 'success');
-                await Promise.all([loadAssessments(), loadExaminees()]);
+                await Promise.all([loadAssessments(), loadExaminees(), loadAttendance()]);
                 populateFilterDropdowns();
                 renderAssessments();
                 renderExaminees();
@@ -798,6 +811,10 @@
 
         pendingDeleteAction = async function () {
             try {
+                // 1. Delete attendance records for this examinee
+                await Admin.serviceClient.from('attendance_records').delete().eq('examinee_id', examineeId);
+
+                // 2. Delete the examinee
                 var result = await Admin.serviceClient.from('examinees').delete().eq('id', examineeId);
                 if (result.error) throw result.error;
 
@@ -874,11 +891,54 @@
                 }
             });
 
+            var newUser = null;
+
             if (signupResult.error) {
-                throw signupResult.error;
+                // If user already exists in auth, try to reuse their account
+                var errMsg = signupResult.error.message || '';
+                if (errMsg.toLowerCase().indexOf('already registered') !== -1 ||
+                    errMsg.toLowerCase().indexOf('already been registered') !== -1 ||
+                    errMsg.toLowerCase().indexOf('duplicate') !== -1) {
+
+                    // Check if there's already a supervisor record for this email
+                    var existCheck = await Admin.serviceClient
+                        .from('supervisors')
+                        .select('user_id')
+                        .eq('email', email)
+                        .maybeSingle();
+
+                    if (existCheck.data) {
+                        throw new Error('A supervisor with this email already exists. Delete the existing supervisor first.');
+                    }
+
+                    // User exists in auth but has no supervisor record — find their ID via admin API
+                    // Delete the old auth user and re-create to ensure correct password
+                    var listResult = await Admin.serviceClient.auth.admin.listUsers();
+                    var existingUser = (listResult.data && listResult.data.users || []).find(function (u) {
+                        return u.email && u.email.toLowerCase() === email.toLowerCase();
+                    });
+
+                    if (existingUser) {
+                        // Delete the orphaned auth user and re-create
+                        await Admin.serviceClient.auth.admin.deleteUser(existingUser.id);
+
+                        var retryResult = await Admin.signupClient.auth.signUp({
+                            email: email,
+                            password: password,
+                            options: { data: { full_name: fullName } }
+                        });
+                        if (retryResult.error) throw retryResult.error;
+                        newUser = retryResult.data.user;
+                    } else {
+                        throw signupResult.error;
+                    }
+                } else {
+                    throw signupResult.error;
+                }
+            } else {
+                newUser = signupResult.data.user;
             }
 
-            var newUser = signupResult.data.user;
             if (!newUser || !newUser.id) {
                 throw new Error('User creation failed. Check Supabase Auth settings (email confirmation must be OFF).');
             }
@@ -989,16 +1049,23 @@
 
     Admin.confirmDeleteSupervisor = function (userId, name) {
         document.getElementById('delete-confirm-text').textContent =
-            'Are you sure you want to remove supervisor "' + name + '"? This will remove their access to the system.';
+            'Are you sure you want to remove supervisor "' + name + '"? This will remove their profile and authentication account permanently.';
 
         pendingDeleteAction = async function () {
             try {
+                // 1. Delete supervisor profile row
                 var result = await Admin.serviceClient
                     .from('supervisors')
                     .delete()
                     .eq('user_id', userId);
-
                 if (result.error) throw result.error;
+
+                // 2. Delete the Supabase Auth user so email can be reused
+                try {
+                    await Admin.serviceClient.auth.admin.deleteUser(userId);
+                } catch (authErr) {
+                    console.warn('Auth user deletion note:', authErr.message);
+                }
 
                 Admin.showToast('Supervisor removed: ' + name, 'success');
                 await loadSupervisors();
@@ -1015,21 +1082,38 @@
 
     Admin.confirmDeleteCenter = function (centerId, name) {
         document.getElementById('delete-confirm-text').textContent =
-            'Are you sure you want to delete center "' + name + '"? This will also remove all associated supervisors, examinees, and attendance records.';
+            'Are you sure you want to delete center "' + name + '"? This will permanently remove all associated attendance records, examinees, and supervisors (including their auth accounts).';
 
         pendingDeleteAction = async function () {
             try {
-                var result = await Admin.serviceClient
-                    .from('centers')
-                    .delete()
-                    .eq('id', centerId);
+                // 1. Delete attendance records for this center
+                await Admin.serviceClient.from('attendance_records').delete().eq('center_id', centerId);
 
+                // 2. Delete examinees for this center
+                await Admin.serviceClient.from('examinees').delete().eq('center_id', centerId);
+
+                // 3. Get supervisors for this center, delete their auth accounts
+                var supResult = await Admin.serviceClient.from('supervisors').select('user_id').eq('center_id', centerId);
+                var supervisors = (supResult.data || []);
+                for (var i = 0; i < supervisors.length; i++) {
+                    try {
+                        await Admin.serviceClient.auth.admin.deleteUser(supervisors[i].user_id);
+                    } catch (authErr) { console.warn('Auth cleanup:', authErr.message); }
+                }
+
+                // 4. Delete supervisor rows for this center
+                await Admin.serviceClient.from('supervisors').delete().eq('center_id', centerId);
+
+                // 5. Delete the center itself
+                var result = await Admin.serviceClient.from('centers').delete().eq('id', centerId);
                 if (result.error) throw result.error;
 
                 Admin.showToast('Center deleted: ' + name, 'success');
                 await Promise.all([loadCenters(), loadSupervisors(), loadExaminees(), loadAttendance()]);
+                populateFilterDropdowns();
                 renderCenters();
                 renderSupervisors();
+                renderExaminees();
                 Admin.renderOverview();
             } catch (err) {
                 Admin.showToast('Error: ' + err.message, 'error');
