@@ -21,6 +21,13 @@
         window.SUPABASE_ANON_KEY
     );
 
+    // Service-role client — bypasses RLS for data operations
+    Admin.serviceClient = window.supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_SERVICE_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+    );
+
     // Throwaway client for creating new auth users (does NOT persist session)
     Admin.signupClient = window.supabase.createClient(
         window.SUPABASE_URL,
@@ -120,7 +127,7 @@
             Admin.currentUser = result.data.user;
 
             // Verify this user is an admin
-            var adminCheck = await Admin.supabase
+            var adminCheck = await Admin.serviceClient
                 .from('admins')
                 .select('*')
                 .eq('user_id', Admin.currentUser.id)
@@ -213,7 +220,7 @@
     // ===================== DATA LOADING =====================
 
     async function loadCenters() {
-        var result = await Admin.supabase
+        var result = await Admin.serviceClient
             .from('centers')
             .select('*')
             .order('name', { ascending: true });
@@ -226,7 +233,7 @@
     }
 
     async function loadSupervisors() {
-        var result = await Admin.supabase
+        var result = await Admin.serviceClient
             .from('supervisors')
             .select('*, centers(name, location)')
             .order('full_name', { ascending: true });
@@ -239,7 +246,7 @@
     }
 
     async function loadExaminees() {
-        var result = await Admin.supabase
+        var result = await Admin.serviceClient
             .from('examinees')
             .select('*, centers(name), assessments(name)')
             .order('full_name', { ascending: true });
@@ -252,7 +259,7 @@
     }
 
     async function loadAttendance() {
-        var result = await Admin.supabase
+        var result = await Admin.serviceClient
             .from('attendance_records')
             .select('id, center_id')
             .order('scanned_at', { ascending: false });
@@ -262,7 +269,7 @@
     }
 
     async function loadAssessments() {
-        var result = await Admin.supabase
+        var result = await Admin.serviceClient
             .from('assessments')
             .select('*')
             .order('exam_date', { ascending: false });
@@ -643,7 +650,7 @@
             var payload = { name: name, description: description || null, created_by: Admin.currentUser.id };
             if (examDate) payload.exam_date = examDate;
 
-            var result = await Admin.supabase.from('assessments').insert(payload);
+            var result = await Admin.serviceClient.from('assessments').insert(payload);
             if (result.error) throw result.error;
 
             successEl.textContent = 'Assessment "' + name + '" created!';
@@ -675,7 +682,7 @@
 
         pendingDeleteAction = async function () {
             try {
-                var result = await Admin.supabase.from('assessments').delete().eq('id', assessmentId);
+                var result = await Admin.serviceClient.from('assessments').delete().eq('id', assessmentId);
                 if (result.error) throw result.error;
 
                 Admin.showToast('Assessment deleted: ' + name, 'success');
@@ -760,7 +767,7 @@
             if (assessmentId) payload.assessment_id = assessmentId;
             if (session) payload.exam_session = session;
 
-            var result = await Admin.supabase.from('examinees').insert(payload);
+            var result = await Admin.serviceClient.from('examinees').insert(payload);
             if (result.error) throw result.error;
 
             successEl.textContent = 'Examinee "' + fullName + '" added!';
@@ -791,7 +798,7 @@
 
         pendingDeleteAction = async function () {
             try {
-                var result = await Admin.supabase.from('examinees').delete().eq('id', examineeId);
+                var result = await Admin.serviceClient.from('examinees').delete().eq('id', examineeId);
                 if (result.error) throw result.error;
 
                 Admin.showToast('Examinee deleted.', 'success');
@@ -877,7 +884,7 @@
             }
 
             // Step 2: Insert the supervisor record
-            var insertResult = await Admin.supabase
+            var insertResult = await Admin.serviceClient
                 .from('supervisors')
                 .insert({
                     user_id: newUser.id,
@@ -947,7 +954,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
 
         try {
-            var result = await Admin.supabase
+            var result = await Admin.serviceClient
                 .from('centers')
                 .insert({ name: name, location: location || null });
 
@@ -986,7 +993,7 @@
 
         pendingDeleteAction = async function () {
             try {
-                var result = await Admin.supabase
+                var result = await Admin.serviceClient
                     .from('supervisors')
                     .delete()
                     .eq('user_id', userId);
@@ -1012,7 +1019,7 @@
 
         pendingDeleteAction = async function () {
             try {
-                var result = await Admin.supabase
+                var result = await Admin.serviceClient
                     .from('centers')
                     .delete()
                     .eq('id', centerId);
@@ -1092,7 +1099,7 @@
                 Admin.currentUser = session.user;
 
                 // Verify admin
-                var adminCheck = await Admin.supabase
+                var adminCheck = await Admin.serviceClient
                     .from('admins')
                     .select('*')
                     .eq('user_id', session.user.id)

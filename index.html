@@ -2804,16 +2804,19 @@ async function syncToDatabase() {
     const statusEl = document.getElementById('syncStatus');
 
     try {
+        // Use service-role client to bypass RLS for all sync operations
+        const db = _supabaseAdmin;
+
         // ---- Step 1: Find or create centers ----
         const uniqueCenters = [...new Set(state.assignments.map(a => a._center))];
         const centerMap = {};
 
         for (const cn of uniqueCenters) {
             updateProgress('Syncing to Database...', 'Center: ' + cn);
-            let { data: row } = await _supabase.from('centers').select('id').eq('name', cn).maybeSingle();
+            let { data: row } = await db.from('centers').select('id').eq('name', cn).maybeSingle();
             if (!row) {
                 const loc = state.assignments.find(a => a._center === cn)?._emirate || null;
-                const ins = await _supabase.from('centers').insert({ name: cn, location: loc }).select('id').single();
+                const ins = await db.from('centers').insert({ name: cn, location: loc }).select('id').single();
                 if (ins.error) throw new Error('Center "' + cn + '": ' + ins.error.message);
                 row = ins.data;
             }
@@ -2823,7 +2826,7 @@ async function syncToDatabase() {
         // ---- Step 2: Clear old examinees for these centers ----
         updateProgress('Syncing to Database...', 'Clearing old data...');
         for (const cid of Object.values(centerMap)) {
-            await _supabase.from('examinees').delete().eq('center_id', cid);
+            await db.from('examinees').delete().eq('center_id', cid);
         }
 
         // ---- Step 3: Find or create assessment ----
@@ -2831,13 +2834,13 @@ async function syncToDatabase() {
         let assessmentId = null;
         const assName = (state.examName || 'Exam') + (state.examYear ? ' ' + state.examYear : '');
         try {
-            let { data: existing } = await _supabase.from('assessments').select('id').eq('name', assName).maybeSingle();
+            let { data: existing } = await db.from('assessments').select('id').eq('name', assName).maybeSingle();
             if (existing) {
                 assessmentId = existing.id;
             } else {
                 const payload = { name: assName, description: state.examOrganizer || null };
                 if (state.examStartDate) payload.exam_date = state.examStartDate;
-                const { data: created, error: assErr } = await _supabase.from('assessments').insert(payload).select('id').single();
+                const { data: created, error: assErr } = await db.from('assessments').insert(payload).select('id').single();
                 if (assErr) console.warn('Assessment creation note:', assErr.message);
                 else assessmentId = created.id;
             }
@@ -2865,7 +2868,7 @@ async function syncToDatabase() {
         let done = 0;
         for (let i = 0; i < records.length; i += BATCH) {
             const batch = records.slice(i, i + BATCH);
-            const { error: batchErr } = await _supabase.from('examinees').insert(batch);
+            const { error: batchErr } = await db.from('examinees').insert(batch);
             if (batchErr) throw new Error('Batch ' + Math.floor(i/BATCH+1) + ': ' + batchErr.message);
             done += batch.length;
             updateProgress('Syncing to Database...', done + ' / ' + records.length + ' uploaded');
@@ -2903,17 +2906,19 @@ async function checkSyncStatus() {
     const hasAttCodes = state.assignments.some(a => a._attendanceCode);
 
     try {
+        // Use service-role client to bypass RLS
+        const db = _supabaseAdmin;
         // Check how many examinees are in DB for the centers used
         const uniqueCenters = [...new Set(state.assignments.map(a => a._center))];
         let totalInDb = 0;
         for(const cn of uniqueCenters) {
-            const { data: center } = await _supabase
+            const { data: center } = await db
                 .from('centers')
                 .select('id')
                 .eq('name', cn)
                 .maybeSingle();
             if(center) {
-                const { count } = await _supabase
+                const { count } = await db
                     .from('examinees')
                     .select('*', { count: 'exact', head: true })
                     .eq('center_id', center.id);
@@ -2952,6 +2957,11 @@ async function checkSyncStatus() {
 // ============================================================
 const _supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 const _signupClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+// Service-role client — bypasses RLS. Used only for admin sync operations.
+const _supabaseAdmin = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+});
 
 let _adminProfile = null;
 let _adminCenters = [];
