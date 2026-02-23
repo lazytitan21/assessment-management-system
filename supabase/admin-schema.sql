@@ -21,180 +21,150 @@ COMMENT ON TABLE admins IS 'Admin users who can manage supervisors, centers, and
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 
 -- Admins can read their own row
+DROP POLICY IF EXISTS "admins_read_own_row" ON admins;
 CREATE POLICY "admins_read_own_row"
     ON admins FOR SELECT
     USING (user_id = auth.uid());
 
 -- ================================
--- ADMIN POLICIES — Admins can read ALL centers
+-- SECURITY DEFINER FUNCTION — bypasses RLS on admins table
+-- This avoids nested-RLS issues where subquery on admins
+-- is itself blocked by RLS during INSERT/UPDATE/DELETE
 -- ================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM admins WHERE user_id = auth.uid()
+    );
+$$;
+
+COMMENT ON FUNCTION public.is_admin() IS
+    'Returns true if the current auth user is an admin. SECURITY DEFINER bypasses RLS.';
+
+-- ================================
+-- ADMIN POLICIES — Centers (full CRUD)
+-- ================================
+DROP POLICY IF EXISTS "admins_read_all_centers" ON centers;
 CREATE POLICY "admins_read_all_centers"
     ON centers FOR SELECT
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can INSERT centers
--- ================================
+DROP POLICY IF EXISTS "admins_insert_centers" ON centers;
 CREATE POLICY "admins_insert_centers"
     ON centers FOR INSERT
-    WITH CHECK (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    WITH CHECK (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can UPDATE centers
--- ================================
+DROP POLICY IF EXISTS "admins_update_centers" ON centers;
 CREATE POLICY "admins_update_centers"
     ON centers FOR UPDATE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can DELETE centers
--- ================================
+DROP POLICY IF EXISTS "admins_delete_centers" ON centers;
 CREATE POLICY "admins_delete_centers"
     ON centers FOR DELETE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
 -- ================================
--- ADMIN POLICIES — Admins can read ALL assessments
+-- ADMIN POLICIES — Assessments (full CRUD)
 -- ================================
+DROP POLICY IF EXISTS "admins_read_all_assessments" ON assessments;
 CREATE POLICY "admins_read_all_assessments"
     ON assessments FOR SELECT
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can INSERT assessments
--- ================================
+DROP POLICY IF EXISTS "admins_insert_assessments" ON assessments;
 CREATE POLICY "admins_insert_assessments"
     ON assessments FOR INSERT
-    WITH CHECK (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    WITH CHECK (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can UPDATE assessments
--- ================================
+DROP POLICY IF EXISTS "admins_update_assessments" ON assessments;
 CREATE POLICY "admins_update_assessments"
     ON assessments FOR UPDATE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can DELETE assessments
--- ================================
+DROP POLICY IF EXISTS "admins_delete_assessments" ON assessments;
 CREATE POLICY "admins_delete_assessments"
     ON assessments FOR DELETE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
 -- ================================
--- ADMIN POLICIES — Admins can read ALL supervisors
+-- ADMIN POLICIES — Supervisors (full CRUD)
 -- ================================
+DROP POLICY IF EXISTS "admins_read_all_supervisors" ON supervisors;
 CREATE POLICY "admins_read_all_supervisors"
     ON supervisors FOR SELECT
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can INSERT supervisors
--- ================================
+DROP POLICY IF EXISTS "admins_insert_supervisors" ON supervisors;
 CREATE POLICY "admins_insert_supervisors"
     ON supervisors FOR INSERT
-    WITH CHECK (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    WITH CHECK (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can UPDATE supervisors
--- ================================
+DROP POLICY IF EXISTS "admins_update_supervisors" ON supervisors;
 CREATE POLICY "admins_update_supervisors"
     ON supervisors FOR UPDATE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can DELETE supervisors
--- ================================
+DROP POLICY IF EXISTS "admins_delete_supervisors" ON supervisors;
 CREATE POLICY "admins_delete_supervisors"
     ON supervisors FOR DELETE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
 -- ================================
--- ADMIN POLICIES — Admins can read ALL examinees
+-- ADMIN POLICIES — Examinees (full CRUD)
 -- ================================
+DROP POLICY IF EXISTS "admins_read_all_examinees" ON examinees;
 CREATE POLICY "admins_read_all_examinees"
     ON examinees FOR SELECT
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can INSERT examinees
--- ================================
+DROP POLICY IF EXISTS "admins_insert_examinees" ON examinees;
 CREATE POLICY "admins_insert_examinees"
     ON examinees FOR INSERT
-    WITH CHECK (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    WITH CHECK (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can UPDATE examinees
--- ================================
+DROP POLICY IF EXISTS "admins_update_examinees" ON examinees;
 CREATE POLICY "admins_update_examinees"
     ON examinees FOR UPDATE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can DELETE examinees
--- ================================
+DROP POLICY IF EXISTS "admins_delete_examinees" ON examinees;
 CREATE POLICY "admins_delete_examinees"
     ON examinees FOR DELETE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
 -- ================================
--- ADMIN POLICIES — Admins can read ALL attendance records
+-- ADMIN POLICIES — Attendance Records (read + delete)
 -- ================================
+DROP POLICY IF EXISTS "admins_read_all_attendance" ON attendance_records;
 CREATE POLICY "admins_read_all_attendance"
     ON attendance_records FOR SELECT
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
 
--- ================================
--- ADMIN POLICIES — Admins can DELETE attendance records
--- ================================
+DROP POLICY IF EXISTS "admins_delete_attendance" ON attendance_records;
 CREATE POLICY "admins_delete_attendance"
     ON attendance_records FOR DELETE
-    USING (
-        auth.uid() IN (SELECT user_id FROM admins)
-    );
+    USING (public.is_admin());
+
+-- ================================
+-- Reload PostgREST schema cache
+-- ================================
+NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
 -- NOTES
 -- ============================================================
--- * Admins can see and manage ALL centers, supervisors, examinees
--- * Admins can create new supervisors (after creating their Auth user)
--- * Supervisors' existing policies remain unchanged — they still
---   only see their own center's data
--- * To create the first admin, run the following manually in SQL Editor
+-- * The is_admin() function uses SECURITY DEFINER so it can
+--   read the admins table without being blocked by RLS.
+--   This is the standard Supabase pattern for nested RLS checks.
+-- * All admin policies now use is_admin() instead of subqueries.
+-- * Supervisors' existing policies remain unchanged.
+-- * To create the first admin, run manually in SQL Editor
 --   AFTER creating the auth user via Authentication > Users:
 --
 --   INSERT INTO admins (user_id, full_name, email) VALUES

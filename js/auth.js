@@ -60,17 +60,28 @@
     App.loadAssessments = async function () {
         // RLS policy "supervisors_read_assessments" restricts this to assessments
         // linked to the supervisor's center via examinees
-        const { data, error } = await App.supabase
-            .from('assessments')
-            .select('*')
-            .order('exam_date', { ascending: false });
+        try {
+            const { data, error } = await App.supabase
+                .from('assessments')
+                .select('*')
+                .order('exam_date', { ascending: false });
 
-        if (error) {
-            App.showToast('Error loading assessments: ' + error.message, 'error');
+            if (error) {
+                // Gracefully handle missing table (schema cache not reloaded yet)
+                if (error.message && error.message.indexOf('schema cache') !== -1) {
+                    console.warn('Assessments table not in schema cache yet. Ask admin to reload schema.');
+                    App.assessments = [];
+                    return;
+                }
+                console.warn('Error loading assessments:', error.message);
+                App.assessments = [];
+                return;
+            }
+            App.assessments = data || [];
+        } catch (e) {
+            console.warn('loadAssessments failed:', e);
             App.assessments = [];
-            return;
         }
-        App.assessments = data || [];
     };
 
     // --------------- Get current session ---------------
