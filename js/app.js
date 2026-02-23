@@ -254,6 +254,15 @@
             });
         }
 
+        // Bind attendance filter
+        var attendanceFilter = document.getElementById('attendance-filter');
+        if (attendanceFilter) {
+            attendanceFilter.addEventListener('change', function () {
+                var query = searchInput ? searchInput.value : '';
+                App.filterExaminees(query);
+            });
+        }
+
         // Bind assessment selector
         var assessmentSelect = document.getElementById('assessment-select');
         if (assessmentSelect) {

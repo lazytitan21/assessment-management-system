@@ -11,6 +11,11 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- QR Generator -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+    <!-- Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Inter Font -->
@@ -127,9 +132,18 @@
                         <div class="card-desc" id="examinees-count">Loading…</div>
                     </div>
                 </div>
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="examinees-search" placeholder="Search by name or national ID…">
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+                    <div class="search-bar" style="flex:1;min-width:200px;margin-bottom:0;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="examinees-search" placeholder="Search by name or national ID…">
+                    </div>
+                    <div class="attendance-filter-group">
+                        <select id="attendance-filter" class="attendance-filter-select">
+                            <option value="all">All</option>
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="table-wrap" id="examinees-table">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading examinees…</div>
@@ -150,6 +164,23 @@
                 </div>
                 <div id="report-content">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading report…</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon success"><i class="fas fa-file-export"></i></div>
+                    <div>
+                        <div class="card-title">Export Attendance</div>
+                        <div class="card-desc">Download professional reports with full attendance data</div>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="App.exportPDF()">
+                        <i class="fas fa-file-pdf"></i> Export PDF Report
+                    </button>
+                    <button class="btn btn-success" onclick="App.exportExcel()">
+                        <i class="fas fa-file-excel"></i> Export Excel File
+                    </button>
                 </div>
             </div>
         </div>
