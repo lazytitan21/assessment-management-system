@@ -89,8 +89,17 @@
         </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <nav class="tab-nav">
+    <!-- Prompt: Select an Exam first -->
+    <div class="select-exam-prompt" id="select-exam-prompt">
+        <div class="prompt-card">
+            <div class="prompt-icon"><i class="fas fa-file-alt"></i></div>
+            <h2>Select an Exam</h2>
+            <p>Please choose an exam from the dropdown above to view the examinee list, reports, attendance, and admission cards.</p>
+        </div>
+    </div>
+
+    <!-- Tab Navigation (hidden until exam selected) -->
+    <nav class="tab-nav" id="tab-nav" style="display:none">
         <button class="tab-btn active" data-tab="examinees">
             <i class="fas fa-users"></i> Examinees
         </button>
@@ -105,8 +114,8 @@
         </button>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
+    <!-- Main Content (hidden until exam selected) -->
+    <main class="main-content" id="main-content" style="display:none">
 
         <!-- ===== EXAMINEES TAB ===== -->
         <div class="tab-panel active" id="panel-examinees">

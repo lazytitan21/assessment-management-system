@@ -76,18 +76,31 @@
         var select = document.getElementById('assessment-select');
         var selectedId = select.value;
         var infoEl = document.getElementById('selector-info');
+        var prompt = document.getElementById('select-exam-prompt');
+        var tabNav = document.getElementById('tab-nav');
+        var mainContent = document.getElementById('main-content');
 
         if (!selectedId) {
             App.currentAssessment = null;
-            infoEl.innerHTML = '<span class="badge badge-secondary">' + App.examinees.length + ' total examinees</span>';
-        } else {
-            App.currentAssessment = App.assessments.find(function (a) { return a.id === selectedId; }) || null;
-            var filtered = App.getFilteredExaminees();
-            infoEl.innerHTML = '<span class="badge badge-primary">' + filtered.length + ' examinee(s)</span>' +
-                (App.currentAssessment && App.currentAssessment.exam_date
-                    ? ' <span class="badge badge-info">' + App.esc(App.currentAssessment.exam_date) + '</span>'
-                    : '');
+            infoEl.innerHTML = '';
+            // Hide tabs/content, show prompt
+            if (prompt) prompt.style.display = '';
+            if (tabNav) tabNav.style.display = 'none';
+            if (mainContent) mainContent.style.display = 'none';
+            return;
         }
+
+        App.currentAssessment = App.assessments.find(function (a) { return a.id === selectedId; }) || null;
+        var filtered = App.getFilteredExaminees();
+        infoEl.innerHTML = '<span class="badge badge-primary">' + filtered.length + ' examinee(s)</span>' +
+            (App.currentAssessment && App.currentAssessment.exam_date
+                ? ' <span class="badge badge-info">' + App.esc(App.currentAssessment.exam_date) + '</span>'
+                : '');
+
+        // Show tabs/content, hide prompt
+        if (prompt) prompt.style.display = 'none';
+        if (tabNav) tabNav.style.display = '';
+        if (mainContent) mainContent.style.display = '';
 
         // Re-render all views for the selected assessment
         App.renderExaminees(App.getFilteredExaminees());
@@ -100,7 +113,7 @@
         var select = document.getElementById('assessment-select');
         var selectorDiv = document.getElementById('assessment-selector');
         var infoEl = document.getElementById('selector-info');
-        select.innerHTML = '<option value="">— All Exams —</option>';
+        select.innerHTML = '<option value="" disabled selected>— Select Exam —</option>';
 
         if (!App.assessments.length) {
             selectorDiv.style.display = 'none';
@@ -117,12 +130,14 @@
         });
 
         selectorDiv.style.display = '';
-        infoEl.innerHTML = '<span class="badge badge-secondary">' + App.examinees.length + ' total examinees</span>';
 
         // Auto-select if there's only one assessment
         if (App.assessments.length === 1) {
             select.value = App.assessments[0].id;
             App.onAssessmentChange();
+        } else {
+            // Show prompt — supervisor must pick an exam
+            infoEl.innerHTML = '<span class="badge badge-secondary">Choose an exam to begin</span>';
         }
     };
 
@@ -187,13 +202,16 @@
         // Load data (examinees, attendance, assessments in parallel)
         await Promise.all([App.loadExaminees(), App.loadAttendanceRecords(), App.loadAssessments()]);
 
-        // Populate assessment selector
+        // Populate assessment selector (auto-selects if only 1 exam)
         App.populateAssessmentSelector();
 
-        // Render
-        App.renderExaminees(App.getFilteredExaminees());
-        App.renderReports();
-        App.renderCardsList();
+        // Only render views if an assessment was auto-selected
+        // Otherwise the prompt screen is shown, waiting for user to pick an exam
+        if (App.currentAssessment) {
+            App.renderExaminees(App.getFilteredExaminees());
+            App.renderReports();
+            App.renderCardsList();
+        }
     }
 
     // --------------- Boot ---------------
