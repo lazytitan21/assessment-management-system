@@ -156,6 +156,103 @@ CREATE POLICY "admins_delete_attendance"
 -- ================================
 NOTIFY pgrst, 'reload schema';
 
+-- ================================
+-- RPC FUNCTION: admin_sync_examinees
+-- Called from the frontend via supabase.rpc()
+-- SECURITY DEFINER = runs as db owner, bypasses ALL RLS
+-- Validates admin status internally before doing anything
+-- ================================
+CREATE OR REPLACE FUNCTION public.admin_sync_examinees(p_data jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_id        uuid;
+    v_center_name    text;
+    v_center_loc     text;
+    v_center_id      uuid;
+    v_assessment_id  uuid;
+    v_inserted       int := 0;
+    v_center_count   int := 0;
+    v_center_ids     uuid[] := '{}';
+    v_center_map     jsonb := '{}'::jsonb;
+BEGIN
+    -- 1. Verify the caller is an admin
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated.';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM admins WHERE user_id = v_user_id) THEN
+        RAISE EXCEPTION 'Access denied: you are not registered as an admin.';
+    END IF;
+
+    -- 2. Find or create centers
+    FOR v_center_name, v_center_loc IN
+        SELECT c->>'name', c->>'location'
+        FROM jsonb_array_elements(p_data->'centers') AS c
+    LOOP
+        SELECT id INTO v_center_id FROM centers WHERE name = v_center_name LIMIT 1;
+        IF v_center_id IS NULL THEN
+            INSERT INTO centers (name, location)
+            VALUES (v_center_name, v_center_loc)
+            RETURNING id INTO v_center_id;
+        END IF;
+        v_center_map := v_center_map || jsonb_build_object(v_center_name, v_center_id::text);
+        v_center_ids := array_append(v_center_ids, v_center_id);
+        v_center_count := v_center_count + 1;
+    END LOOP;
+
+    -- 3. Delete existing examinees for these centers (clean re-sync)
+    DELETE FROM examinees WHERE center_id = ANY(v_center_ids);
+
+    -- 4. Create or find assessment
+    IF (p_data->>'assessment_name') IS NOT NULL AND (p_data->>'assessment_name') != '' THEN
+        SELECT id INTO v_assessment_id
+        FROM assessments WHERE name = (p_data->>'assessment_name') LIMIT 1;
+
+        IF v_assessment_id IS NULL THEN
+            INSERT INTO assessments (name, description, exam_date, created_by)
+            VALUES (
+                p_data->>'assessment_name',
+                p_data->>'assessment_desc',
+                CASE
+                    WHEN (p_data->>'exam_date') IS NOT NULL AND (p_data->>'exam_date') != ''
+                    THEN (p_data->>'exam_date')::date
+                    ELSE NULL
+                END,
+                v_user_id
+            )
+            RETURNING id INTO v_assessment_id;
+        END IF;
+    END IF;
+
+    -- 5. Bulk-insert all examinees
+    INSERT INTO examinees (center_id, assessment_id, full_name, national_id, exam_session, attendance_code)
+    SELECT
+        (v_center_map->>(e->>'center_name'))::uuid,
+        v_assessment_id,
+        e->>'full_name',
+        NULLIF(e->>'national_id', ''),
+        NULLIF(e->>'exam_session', ''),
+        e->>'attendance_code'
+    FROM jsonb_array_elements(p_data->'examinees') AS e;
+
+    GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'inserted', v_inserted,
+        'centers', v_center_count,
+        'assessment_id', v_assessment_id::text
+    );
+END;
+$$;
+
+COMMENT ON FUNCTION public.admin_sync_examinees(jsonb) IS
+    'Bulk-sync examinees from the distribution tool. SECURITY DEFINER bypasses RLS. Validates admin status internally.';
+
 -- ============================================================
 -- NOTES
 -- ============================================================
