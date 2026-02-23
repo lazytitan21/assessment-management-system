@@ -60,9 +60,12 @@
     App.loadAssessments = async function () {
         try {
             if (!App.center) {
+                console.warn('loadAssessments: No center loaded yet');
                 App.assessments = [];
                 return;
             }
+
+            console.log('loadAssessments: center_id =', App.center.id, 'center =', App.center.name);
 
             // First get the assessment IDs linked to this center's examinees
             const { data: examRows, error: exErr } = await App.db
@@ -70,6 +73,8 @@
                 .select('assessment_id')
                 .eq('center_id', App.center.id)
                 .not('assessment_id', 'is', null);
+
+            console.log('loadAssessments: examinees with assessment_id:', examRows ? examRows.length : 0, exErr ? 'ERROR: ' + exErr.message : '');
 
             if (exErr) {
                 console.warn('Error fetching examinee assessment links:', exErr.message);
@@ -79,7 +84,9 @@
 
             // Get unique assessment IDs
             const assessmentIds = [...new Set((examRows || []).map(function (r) { return r.assessment_id; }))];
+            console.log('loadAssessments: unique assessment IDs:', assessmentIds);
             if (!assessmentIds.length) {
+                console.warn('loadAssessments: No assessments linked to examinees in this center');
                 App.assessments = [];
                 return;
             }
@@ -90,6 +97,8 @@
                 .select('*')
                 .in('id', assessmentIds)
                 .order('exam_date', { ascending: false });
+
+            console.log('loadAssessments: fetched', data ? data.length : 0, 'assessment(s)', error ? 'ERROR: ' + error.message : '');
 
             if (error) {
                 console.warn('Error loading assessments:', error.message);

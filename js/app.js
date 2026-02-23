@@ -126,6 +126,19 @@
 
         if (!App.assessments.length) {
             selectorDiv.style.display = 'none';
+            // Show a "no exams" message in the prompt
+            var prompt = document.getElementById('select-exam-prompt');
+            if (prompt) {
+                prompt.innerHTML =
+                    '<div class="prompt-card">' +
+                    '<div class="prompt-icon" style="background:var(--warning-bg);color:var(--warning);">' +
+                    '<i class="fas fa-exclamation-triangle"></i></div>' +
+                    '<h2>No Exams Available</h2>' +
+                    '<p>No assessments have been synced to your center yet.<br>' +
+                    'Please ask the administrator to run the <strong>Sync to Database</strong> from the Distribution Tool.</p>' +
+                    '</div>';
+                prompt.style.display = '';
+            }
             return;
         }
 
